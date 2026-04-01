@@ -1,4 +1,45 @@
 use std::io;
+use std::fs;
+
+enum CellState {
+    Filled,
+    NotFilled
+}
+
+struct GridCell {
+    cell_value: char,
+    cell_state: CellState
+}
+
+impl GridCell {
+    fn new() -> Self {
+        Self { cell_value: '_', cell_state: CellState::NotFilled }
+    }
+}
+
+struct Grid {
+    width: u32,
+    height: u32,
+    layout: Vec<Vec<GridCell>>
+}
+
+impl Grid {
+    fn new(width: u32, height: u32) -> Self {
+        let mut layout : Vec<Vec<GridCell>> = Vec::new();
+
+        for row_idx in 0..height {
+            layout.push(Vec::new());
+
+            for _ in 0..width {
+                let cell = GridCell::new();
+                layout[row_idx as usize].push(cell);
+            }
+        }
+
+        Grid { width, height, layout }
+    }
+}
+
 
 pub fn run() {
     let mut input = String::new();
@@ -6,8 +47,12 @@ pub fn run() {
     let width = take_dimension_value_as_input("width", &mut input);
     let height = take_dimension_value_as_input("height", &mut input);
 
+    let grid = Grid::new(width, height);
+    let words = fs::read_to_string("./src/common_english_words.txt").expect("Should have been able to read the file");
+
     println!("Width: {}", width);
     println!("Height: {}", height);
+    println!("Words: {}", words);
 }
 
 fn take_dimension_value_as_input(dimension: &str, input_container: &mut String) -> u32 {
