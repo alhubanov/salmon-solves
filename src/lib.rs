@@ -41,14 +41,20 @@ impl Grid {
 }
 
 
-pub fn run() {
+pub fn run() -> () {
     let mut input = String::new();
 
     let width = take_dimension_value_as_input("width", &mut input);
     let height = take_dimension_value_as_input("height", &mut input);
 
     let grid = Grid::new(width, height);
-    let words = fs::read_to_string("./src/common_english_words.txt").expect("Should have been able to read the file");
+    let words = match fs::read_to_string("./word_files/common_english_words_long.txt") {
+        Ok(file_content) => file_content, 
+        Err(_) => {
+            println!("Internal Error: Could not read the source file containing all the words. Program will exit now.");
+            return;
+        }
+    };
 
     println!("Width: {}", width);
     println!("Height: {}", height);
