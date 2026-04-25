@@ -13,7 +13,6 @@ pub fn take_dimension_value_as_input(dimension: &str, input_container: &mut Stri
         }
 
         let value = input_container.trim().parse::<u32>();
-
         match value {
             Ok(inner_val) if inner_val >= 3 => {
                 return inner_val;
