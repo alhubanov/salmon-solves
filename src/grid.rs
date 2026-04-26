@@ -408,6 +408,11 @@ mod tests {
         assert_eq!(cell.cell_state, CellState::Filled);
     }
 
+    fn assert_cell_is_not_filled(cell: &GridCell) {
+        assert_eq!(cell.cell_value, '_');
+        assert_eq!(cell.cell_state, CellState::NotFilled);
+    }
+
     fn assert_horizontal_word_placement_starting_at_idx(grid: &Grid, height_idx: usize, width_idx: usize, word: &String) {
 
         let mut count = 0;
@@ -436,27 +441,21 @@ mod tests {
         grid.layout[0 as usize][0 as usize].cell_state = CellState::Filled;
 
         grid.reset_cell_at_index(0, 0);
-
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_cell_is_filled(&grid.layout[0 as usize][0 as usize], 'a');
 
         // case TentativelyFilled
         grid.layout[0 as usize][0 as usize].cell_value = '1';
         grid.layout[0 as usize][0 as usize].cell_state = CellState::TentativelyFilled;
 
         grid.reset_cell_at_index(0, 0);
-
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == '_');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::NotFilled);
+        assert_cell_is_not_filled(&grid.layout[0 as usize][0 as usize]);
 
         // case Empty
         grid.layout[0 as usize][0 as usize].cell_value = '_';
         grid.layout[0 as usize][0 as usize].cell_state = CellState::NotFilled;
 
         grid.reset_cell_at_index(0, 0);
-
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == '_');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::NotFilled);
+        assert_cell_is_not_filled(&grid.layout[0 as usize][0 as usize]);
     }
 
     #[test]
@@ -468,27 +467,21 @@ mod tests {
         grid.layout[0 as usize][0 as usize].cell_state = CellState::Filled;
 
         grid.confirm_cell_at_index(0, 0);
-
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_cell_is_filled(&grid.layout[0 as usize][0 as usize], 'a');
 
         // case TentativelyFilled
         grid.layout[0 as usize][0 as usize].cell_value = '1';
         grid.layout[0 as usize][0 as usize].cell_state = CellState::TentativelyFilled;
 
         grid.confirm_cell_at_index(0, 0);
-
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == '1');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_cell_is_filled(&grid.layout[0 as usize][0 as usize], '1');
 
         // case Empty
         grid.layout[0 as usize][0 as usize].cell_value = 'q';
         grid.layout[0 as usize][0 as usize].cell_state = CellState::NotFilled;
 
         grid.confirm_cell_at_index(0, 0);
-
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'q');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_cell_is_filled(&grid.layout[0 as usize][0 as usize], 'q');
     }
 
     #[test]
