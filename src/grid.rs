@@ -1,7 +1,7 @@
 use num::Integer;
 use std::collections::HashSet;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum CellState {
     Filled,
     NotFilled,
@@ -401,7 +401,30 @@ impl Grid {
 
 #[cfg(test)]
 mod tests {
-    use crate::grid::*;
+    use super::*;
+
+    fn assert_cell_is_filled(cell: &GridCell, letter: char) {
+        assert_eq!(cell.cell_value, letter);
+        assert_eq!(cell.cell_state, CellState::Filled);
+    }
+
+    fn assert_horizontal_word_placement_starting_at_idx(grid: &Grid, height_idx: usize, width_idx: usize, word: &String) {
+
+        let mut count = 0;
+        for letter in word.chars() {
+            assert_cell_is_filled(&grid.layout[height_idx][width_idx + count], letter);
+            count += 1;
+        }
+    }
+
+    fn assert_vertical_word_placement_starting_at_idx(grid: &Grid, height_idx: usize, width_idx: usize, word: &String) {
+
+        let mut count = 0;
+        for letter in word.chars() {
+            assert_cell_is_filled(&grid.layout[height_idx + count][width_idx], letter);
+            count += 1;
+        }
+    }
 
     #[test]
     fn cell_reset() {
@@ -474,38 +497,17 @@ mod tests {
         let result = grid.place_word_horizontally_starting_at_given_coordinates(0, 0, &"word".to_owned());
 
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'w');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'o');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'r');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'd');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"word".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(0, 1, &"the".to_owned());
 
         assert!(result.is_err());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'w');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'o');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'r');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'd');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"word".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(0, 0, &"moat".to_owned());
 
         assert!(result.is_err());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'w');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'o');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'r');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'd');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"word".to_owned());
     }
 
     #[test]
@@ -527,72 +529,24 @@ mod tests {
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(0, 0, &"moat".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'o');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 't');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"moat".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"maple".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"post".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'o');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 't');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 0, &"post".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"maple".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(4, 0, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(4, 0, &"east".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[4 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 's');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][3 as usize].cell_value == 't');
-        assert!(grid.layout[4 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 4, 0, &"east".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"maple".to_owned());
 
         assert!(grid.placed_words.len() == 3);
     }
@@ -616,74 +570,24 @@ mod tests {
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(0, 0, &"momma".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'o');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][2 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][2 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"momma".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 2, &"maple".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"cops".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'c');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'o');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][2 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][2 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 0, &"cops".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 2, &"maple".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(4, 0, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(4, 0, &"fred".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'f');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][1 as usize].cell_value == 'r');
-        assert!(grid.layout[4 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][3 as usize].cell_value == 'd');
-        assert!(grid.layout[4 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][2 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][2 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 4, 0, &"fred".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 2, &"maple".to_owned());
 
         assert!(grid.placed_words.len() == 3);
     }
@@ -707,78 +611,24 @@ mod tests {
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(0, 0, &"bitum".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'b');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'i');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 't');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'u');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][4 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][4 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"bitum".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 4, &"maple".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"start".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"aesop".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'e');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 'o');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][4 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][4 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 0, &"aesop".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 4, &"maple".to_owned());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(4, 0, &"start".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(4, 0, &"andre".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][1 as usize].cell_value == 'n');
-        assert!(grid.layout[4 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'd');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][3 as usize].cell_value == 'r');
-        assert!(grid.layout[4 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][4 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][4 as usize].cell_value == 'l');
-        assert!(grid.layout[3 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 4, 0, &"andre".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 4, &"maple".to_owned());
 
         assert!(grid.placed_words.len() == 3);
     }
@@ -789,38 +639,17 @@ mod tests {
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 0, &"word".to_owned());
 
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'w');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'o');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'r');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'd');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"word".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(1, 0, &"the".to_owned());
 
         assert!(result.is_err());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'w');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'o');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'r');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'd');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"word".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 0, &"moat".to_owned());
 
         assert!(result.is_err());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'w');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'o');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'r');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'd');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"word".to_owned());
     }
 
     #[test]
@@ -842,72 +671,24 @@ mod tests {
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 0, &"moat".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'o');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 't');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"moat".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"post".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][2 as usize].cell_value == 'o');
-        assert!(grid.layout[1 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][2 as usize].cell_value == 't');
-        assert!(grid.layout[3 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 2, &"post".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 4, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 4, &"east".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][4 as usize].cell_value == 'a');
-        assert!(grid.layout[1 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][4 as usize].cell_value == 't');
-        assert!(grid.layout[3 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[0 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 0, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 4, &"east".to_owned());
 
         assert!(grid.placed_words.len() == 3);
     }
@@ -931,74 +712,24 @@ mod tests {
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 0, &"momma".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'o');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'a');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"momma".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"cops".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'c');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][2 as usize].cell_value == 'o');
-        assert!(grid.layout[1 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][2 as usize].cell_value == 's');
-        assert!(grid.layout[3 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 2, &"cops".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 4, &"star".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 4, &"fred".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'f');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][4 as usize].cell_value == 'r');
-        assert!(grid.layout[1 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][4 as usize].cell_value == 'd');
-        assert!(grid.layout[3 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 4, &"fred".to_owned());
 
         assert!(grid.placed_words.len() == 3);
     }
@@ -1022,78 +753,24 @@ mod tests {
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 0, &"bitum".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][0 as usize].cell_value == 'b');
-        assert!(grid.layout[0 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][0 as usize].cell_value == 'i');
-        assert!(grid.layout[1 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][0 as usize].cell_value == 't');
-        assert!(grid.layout[2 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][0 as usize].cell_value == 'u');
-        assert!(grid.layout[3 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[4 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[4 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 4, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 0, &"bitum".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"start".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"aesop".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][2 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][2 as usize].cell_value == 'e');
-        assert!(grid.layout[1 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][2 as usize].cell_value == 'o');
-        assert!(grid.layout[3 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[4 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[4 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 4, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 2, &"aesop".to_owned());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 4, &"start".to_owned());
         assert!(result.is_err());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 4, &"andre".to_owned());
         assert!(result.is_ok());
-        assert!(grid.layout[0 as usize][4 as usize].cell_value == 'a');
-        assert!(grid.layout[0 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[1 as usize][4 as usize].cell_value == 'n');
-        assert!(grid.layout[1 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 'd');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[3 as usize][4 as usize].cell_value == 'r');
-        assert!(grid.layout[3 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][0 as usize].cell_value == 'm');
-        assert!(grid.layout[4 as usize][0 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][1 as usize].cell_value == 'a');
-        assert!(grid.layout[4 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][2 as usize].cell_value == 'p');
-        assert!(grid.layout[4 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][3 as usize].cell_value == 'l');
-        assert!(grid.layout[4 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[4 as usize][4 as usize].cell_value == 'e');
-        assert!(grid.layout[4 as usize][4 as usize].cell_state == CellState::Filled);
+        assert_horizontal_word_placement_starting_at_idx(&grid, 4, 0, &"maple".to_owned());
+        assert_vertical_word_placement_starting_at_idx(&grid, 0, 4, &"andre".to_owned());
 
         assert!(grid.placed_words.len() == 3);
     }
@@ -1190,16 +867,7 @@ mod tests {
 
         let result = grid.place_first_word(&"bass".to_owned());
         assert!(result.is_ok());
-
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'b');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'a');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 1, &"bass".to_owned());
         assert!(grid.placed_words.len() == 1);
     }
 
@@ -1209,16 +877,7 @@ mod tests {
 
         let result = grid.place_first_word(&"bass".to_owned());
         assert!(result.is_ok());
-
-        assert!(grid.layout[2 as usize][1 as usize].cell_value == 'b');
-        assert!(grid.layout[2 as usize][1 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][2 as usize].cell_value == 'a');
-        assert!(grid.layout[2 as usize][2 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][3 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][3 as usize].cell_state == CellState::Filled);
-        assert!(grid.layout[2 as usize][4 as usize].cell_value == 's');
-        assert!(grid.layout[2 as usize][4 as usize].cell_state == CellState::Filled);
-
+        assert_horizontal_word_placement_starting_at_idx(&grid, 2, 1, &"bass".to_owned());
         assert!(grid.placed_words.len() == 1);
     }
 }
