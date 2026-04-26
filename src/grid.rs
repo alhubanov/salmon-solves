@@ -3,6 +3,8 @@ use std::collections::HashSet;
 
 #[cfg(test)]
 mod unit_tests;
+#[cfg(test)]
+mod test_helpers;
 
 #[derive(PartialEq, Debug)]
 enum CellState {
