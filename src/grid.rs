@@ -1,5 +1,5 @@
 use num::Integer;
-use std::collections::HashSet;
+use std::collections::{HashSet};
 
 #[cfg(test)]
 mod unit_tests;
@@ -54,7 +54,7 @@ pub enum WordPlacementError {
     WordAlreadyContained
 }
 
-#[derive(PartialEq)]
+#[derive(Eq, Hash, PartialEq)]
 enum WordDirection {
     Across,
     Down
@@ -142,6 +142,46 @@ impl Grid {
         Ok(())
     }
 
+    fn apply_on_sequence<F>(
+        &mut self, starting_coord: u32, mut height: u32, mut width: u32, direction: WordDirection, mut operation: F,
+    )
+    where
+        F: FnMut(&mut Self, u32, u32),
+    {
+        match direction {
+            WordDirection::Across => {
+                while width >= starting_coord {
+                    operation(self, height, width);
+                    if width == 0 {
+                        break;
+                    }
+                    width -= 1;
+                }
+            }
+            WordDirection::Down => {
+                while height >= starting_coord {
+                    operation(self, height, width);
+                    if height == 0 {
+                        break;
+                    }
+                    height -= 1;
+                }
+            }
+        }
+    }
+
+    fn clear_word(&mut self, starting_coord: u32, height_coord: u32, width_coord: u32, direction: WordDirection) {
+        self.apply_on_sequence(starting_coord, height_coord, width_coord, direction, |grid, h, w| {
+            grid.reset_cell_at_index(h, w)
+        });
+    }
+
+    fn confirm_word(&mut self, starting_coord: u32, height_coord: u32, width_coord: u32, direction: WordDirection) {
+       self.apply_on_sequence(starting_coord, height_coord, width_coord, direction, |grid, h, w| {
+            grid.confirm_cell_at_index(h, w)
+        });
+    }
+
     fn place_word_horizontally_starting_at_given_coordinates(&mut self, height_coord: u32, mut width_coord: u32, word: &String) -> Result<(), WordPlacementError> {
 
         if word.len() as u32 > self.width - width_coord {
@@ -157,19 +197,7 @@ impl Grid {
             let next_letter = word_as_vec.get(letter_idx + 1).copied();
             
             if let Err(e) = self.place_letter_at_index(height_coord, width_coord, letter, next_letter, WordDirection::Across) {
-
-                while width_coord >= starting_width_coord {
-                    self.reset_cell_at_index(height_coord, width_coord);
-
-                    if width_coord == 0 {
-                        break;
-                    }
-
-                    if width_coord > 0 {
-                        width_coord -= 1;
-                    }
-                }
-
+                self.clear_word(starting_width_coord, height_coord, width_coord, WordDirection::Across);
                 return Err(e);
             }
 
@@ -177,18 +205,7 @@ impl Grid {
         }
 
         width_coord -= 1;
-
-        while width_coord >= starting_width_coord {
-
-            self.confirm_cell_at_index(height_coord, width_coord);
-            
-            if width_coord == 0 {
-                break;
-            } else {
-                width_coord -= 1;
-            }
-        }
-
+        self.confirm_word(starting_width_coord, height_coord, width_coord, WordDirection::Across);
         self.placed_words.insert(word.clone());
 
         Ok(())
@@ -209,19 +226,7 @@ impl Grid {
             let next_letter = word_as_vec.get(letter_idx + 1).copied();     
 
             if let Err(e) = self.place_letter_at_index(height_coord, width_coord, letter, next_letter, WordDirection::Down) {
-
-                while height_coord >= starting_height_coord {
-                    self.reset_cell_at_index(height_coord, width_coord);
-
-                    if height_coord == 0 {
-                        break;
-                    }
-
-                    if height_coord > 0 {
-                        height_coord -= 1;
-                    }
-                }
-
+                self.clear_word(starting_height_coord, height_coord, width_coord, WordDirection::Down);
                 return Err(e);
             }
 
@@ -229,17 +234,7 @@ impl Grid {
         }
 
         height_coord -= 1;
-
-        while height_coord >= starting_height_coord {
-            self.confirm_cell_at_index(height_coord, width_coord);
-
-            if height_coord == 0 {
-                break;
-            } else {
-                height_coord -= 1;
-            }
-        }
-
+        self.confirm_word(starting_height_coord, height_coord, width_coord, WordDirection::Down);
         self.placed_words.insert(word.clone());
 
         Ok(())
