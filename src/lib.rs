@@ -25,10 +25,10 @@ pub fn run() -> () {
             continue;
         }
     }
+
+    println!();
+    println!("Here's a crossword: ");
+    println!();
     
     grid.print();
-
-    // println!("Width: {}", width);
-    // println!("Height: {}", height);
-    // println!("Words: {}", words);
 }

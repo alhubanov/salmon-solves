@@ -8,21 +8,32 @@ enum CellState {
     TentativelyFilled
 }
 
+#[derive(PartialEq)]
+enum CrossingState {
+    Is,
+    IsTentatively,
+    IsNot
+}
+
 struct GridCell {
     cell_value: char,
     cell_state: CellState,
-    is_a_crossing: bool
+    is_a_crossing: CrossingState
 }
 
 impl GridCell {
     fn new() -> Self {
-        Self { cell_value: '_', cell_state: CellState::NotFilled, is_a_crossing: false }
+        Self { cell_value: '_', cell_state: CellState::NotFilled, is_a_crossing: CrossingState::IsNot }
     }
 
     fn reset(&mut self) {
         self.cell_value = '_';
         self.cell_state = CellState::NotFilled;
-        self.is_a_crossing = false;
+        self.reset_crossing_state();
+    }
+
+    fn reset_crossing_state(&mut self) {
+        self.is_a_crossing = CrossingState::IsNot;
     }
 }
 
@@ -237,7 +248,7 @@ impl Grid {
         self.verify_cell_to_the_right(height_coord, width_coord, next_letter, &direction)?;
         self.verify_cell_below(height_coord, width_coord, next_letter, &direction)?;
 
-        if !self.layout[height_coord as usize][width_coord as usize].is_a_crossing {
+        if self.layout[height_coord as usize][width_coord as usize].cell_state == CellState::NotFilled {
             self.layout[height_coord as usize][width_coord as usize].cell_state = CellState::TentativelyFilled;
             self.layout[height_coord as usize][width_coord as usize].cell_value = letter;
         }
@@ -249,12 +260,21 @@ impl Grid {
         if self.layout[height_coord as usize][width_coord as usize].cell_state == CellState::TentativelyFilled {
             self.layout[height_coord as usize][width_coord as usize].reset();
         }
+
+        else if self.layout[height_coord as usize][width_coord as usize].is_a_crossing == CrossingState::IsTentatively {
+            self.layout[height_coord as usize][width_coord as usize].reset_crossing_state();
+        }
         
         return;
     }
 
     fn confirm_cell_at_index(&mut self, height_coord: u32, width_coord: u32) -> () {
         self.layout[height_coord as usize][width_coord as usize].cell_state = CellState::Filled;
+
+        if self.layout[height_coord as usize][width_coord as usize].is_a_crossing == CrossingState::IsTentatively {
+            self.layout[height_coord as usize][width_coord as usize].is_a_crossing = CrossingState::Is;
+        }
+
         return;
     }
 
@@ -264,7 +284,7 @@ impl Grid {
             self.layout[height_coord as usize][width_coord as usize].cell_value == letter
         {
             if self.layout[height_coord as usize][width_coord as usize].cell_value == letter {
-                self.layout[height_coord as usize][width_coord as usize].is_a_crossing = true;
+                self.layout[height_coord as usize][width_coord as usize].is_a_crossing = CrossingState::IsTentatively;
             }
             return Ok(());
         }
@@ -280,8 +300,8 @@ impl Grid {
         }
 
         if self.layout[height_coord as usize][(width_coord - 1) as usize].cell_state != CellState::Filled || 
-            (self.layout[height_coord as usize][(width_coord - 1) as usize].is_a_crossing && *direction == WordDirection::Across) ||
-            (self.layout[height_coord as usize][width_coord as usize].is_a_crossing && *direction == WordDirection::Down)
+            (self.layout[height_coord as usize][(width_coord - 1) as usize].is_a_crossing == CrossingState::IsTentatively && *direction == WordDirection::Across) ||
+            (self.layout[height_coord as usize][width_coord as usize].is_a_crossing == CrossingState::IsTentatively && *direction == WordDirection::Down)
         {
             return Ok(());
         }
@@ -297,8 +317,8 @@ impl Grid {
         }
 
         if self.layout[(height_coord - 1) as usize][width_coord as usize].cell_state != CellState::Filled ||
-            (self.layout[(height_coord - 1) as usize][width_coord as usize].is_a_crossing && *direction == WordDirection::Down) ||
-            (self.layout[height_coord as usize][width_coord as usize].is_a_crossing && *direction == WordDirection::Across)
+            (self.layout[(height_coord - 1) as usize][width_coord as usize].is_a_crossing == CrossingState::IsTentatively && *direction == WordDirection::Down) ||
+            (self.layout[height_coord as usize][width_coord as usize].is_a_crossing == CrossingState::IsTentatively && *direction == WordDirection::Across)
         {
             return Ok(());
         }
@@ -309,14 +329,6 @@ impl Grid {
     fn verify_cell_to_the_right(&self, height_coord: u32, width_coord: u32, next_letter: Option<char>, direction: &WordDirection) -> Result<(), WordPlacementError> {
 
         if width_coord == self.width - 1 
-        {
-            return Ok(());
-        }
-
-
-        if self.layout[height_coord as usize][(width_coord + 1) as usize].cell_state == CellState::NotFilled || 
-            (self.layout[height_coord as usize][(width_coord + 1) as usize].cell_state == CellState::Filled && 
-            self.layout[height_coord as usize][width_coord as usize].is_a_crossing)
         {
             return Ok(());
         }
@@ -340,20 +352,19 @@ impl Grid {
             return Ok(());
         }
 
+        if self.layout[height_coord as usize][(width_coord + 1) as usize].cell_state == CellState::NotFilled || 
+            (self.layout[height_coord as usize][(width_coord + 1) as usize].cell_state == CellState::Filled && 
+            self.layout[height_coord as usize][width_coord as usize].is_a_crossing == CrossingState::IsTentatively)
+        {
+            return Ok(());
+        }
+
         Err(WordPlacementError::BlockerRight)
     }
 
     fn verify_cell_below(&self, height_coord: u32, width_coord: u32, next_letter: Option<char>, direction: &WordDirection) -> Result<(), WordPlacementError> {
 
         if height_coord == self.height - 1 
-        {
-            return Ok(());
-        }
-
-
-        if self.layout[(height_coord + 1) as usize][width_coord as usize].cell_state == CellState::NotFilled ||
-            (self.layout[(height_coord + 1) as usize][width_coord as usize].cell_state == CellState::Filled && 
-            self.layout[height_coord as usize][width_coord as usize].is_a_crossing)
         {
             return Ok(());
         }
@@ -373,6 +384,13 @@ impl Grid {
             self.layout[(height_coord + 2) as usize][width_coord as usize].cell_state == CellState::NotFilled &&
             next_letter.is_some() &&
             self.layout[(height_coord + 1) as usize][width_coord as usize].cell_value == next_letter.unwrap()
+        {
+            return Ok(());
+        }
+
+        if self.layout[(height_coord + 1) as usize][width_coord as usize].cell_state == CellState::NotFilled ||
+            (self.layout[(height_coord + 1) as usize][width_coord as usize].cell_state == CellState::Filled && 
+            self.layout[height_coord as usize][width_coord as usize].is_a_crossing == CrossingState::IsTentatively)
         {
             return Ok(());
         }
