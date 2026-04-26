@@ -1097,11 +1097,17 @@ mod tests {
     }
 
     #[test]
-    fn placing_words_horizontally_too_close() {
-        let mut grid = Grid::new(5, 5);
+    fn placing_words_too_close_1() {
+        let mut grid = Grid::new(7, 7);
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"map".to_owned());
         assert!(result.is_ok());
+
+        let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 3, &"the".to_owned());
+        assert!(result.is_err());
+
+        let result = grid.place_word_vertically_starting_at_given_coordinates(3, 1, &"the".to_owned());
+        assert!(result.is_err());
 
         let result = grid.place_word_horizontally_starting_at_given_coordinates(3, 1, &"debt".to_owned());
         assert!(result.is_err());
@@ -1113,11 +1119,17 @@ mod tests {
     }
 
     #[test]
-    fn placing_words_vertically_too_close() {
-        let mut grid = Grid::new(5, 5);
+    fn placing_words_too_close_2() {
+        let mut grid = Grid::new(7, 7);
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"map".to_owned());
         assert!(result.is_ok());
+
+        let result = grid.place_word_vertically_starting_at_given_coordinates(3, 2, &"the".to_owned());
+        assert!(result.is_err());
+
+        let result = grid.place_word_horizontally_starting_at_given_coordinates(1, 3, &"the".to_owned());
+        assert!(result.is_err());
 
         let result = grid.place_word_vertically_starting_at_given_coordinates(2, 1, &"dad".to_owned());
         assert!(result.is_err());
