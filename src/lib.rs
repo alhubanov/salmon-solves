@@ -1,4 +1,5 @@
 use std::fs;
+use rand::{self, seq::SliceRandom};
 
 use crate::grid::Grid;
 
@@ -20,7 +21,12 @@ pub fn run() -> () {
         }
     };
 
-    for word in words.lines() {
+    let mut words_vec : Vec<&str> = words.lines().collect();
+
+    let mut rng = rand::rng();
+    words_vec.shuffle(&mut rng);
+
+    for word in words_vec {
         if let Err(_) = grid.place_word(&word.to_owned()) {
             continue;
         }

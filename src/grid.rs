@@ -157,7 +157,7 @@ impl Grid {
                     }
                     width -= 1;
                 }
-            }
+            },
             WordDirection::Down => {
                 while height >= starting_coord {
                     operation(self, height, width);
