@@ -1,5 +1,4 @@
 use crossy::run;
-use termion::{color, style};
 
 fn main() {
     print_header();
@@ -15,7 +14,6 @@ fn print_header() {
 }
 
 fn print_title_art() {
-    print!("{}{}", color::Fg(color::Blue), style::Bold);
     println!("  * * * * *     * * * * *     * * * * *     * * * * *     * * * * *     *             *   ");
     println!("*               *       *     *       *     *             *               *         *     ");
     println!("*               *       *     *       *     *             *                 *     *       ");
@@ -25,5 +23,4 @@ fn print_title_art() {
     println!("*               *   *         *       *             *             *            *          ");
     println!("*               *     *       *       *             *             *            *          ");
     println!("  * * * * *     *       *     * * * * *     * * * * *     * * * * *            *          ");
-    print!("{}", style::Reset);
 }

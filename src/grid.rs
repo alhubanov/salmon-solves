@@ -1,25 +1,28 @@
 use num::Integer;
 use std::collections::{HashSet};
+use serde::{Serialize, Deserialize};
+use wasm_bindgen::prelude::*;
 
 #[cfg(test)]
 mod unit_tests;
 #[cfg(test)]
 mod test_helpers;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 enum CellState {
     Filled,
     NotFilled,
     TentativelyFilled
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Serialize, Deserialize)]
 enum CrossingState {
     Is,
     IsTentatively,
     IsNot
 }
 
+#[derive(Serialize, Deserialize)]
 struct GridCell {
     cell_value: char,
     cell_state: CellState,
@@ -60,6 +63,8 @@ enum WordDirection {
     Down
 }
 
+#[derive(Serialize, Deserialize)]
+#[wasm_bindgen]
 pub struct Grid {
     width: u32,
     height: u32,
