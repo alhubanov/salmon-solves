@@ -2,7 +2,9 @@ use rand::{self, seq::SliceRandom};
 use wasm_bindgen::prelude::*;
 
 use crate::grid_simple::Grid;
+use crate::grid_scandi::Grid as ScandiGrid;
 
+pub mod grid_scandi;
 pub mod grid_simple;
 pub mod input_utilities;
 
@@ -14,7 +16,7 @@ pub fn run() -> () {
     let width = input_utilities::take_dimension_value_as_input("width", &mut input);
     let height = input_utilities::take_dimension_value_as_input("height", &mut input);
 
-    let grid = match build_crossword_grid_for_command_line(width, height) {
+    let grid = match build_scandinavian_grid_for_command_line(width, height) {
         Ok(res) => res,
         Err(s) => { 
             println!("{}", s); 
@@ -27,6 +29,11 @@ pub fn run() -> () {
     println!();
     
     grid.print();
+}
+
+pub fn build_scandinavian_grid_for_command_line(width: u32, height: u32) -> Result<ScandiGrid, String> {
+    let grid = ScandiGrid::new(width, height);
+    return Ok(grid);
 }
 
 pub fn build_crossword_grid_for_command_line(width: u32, height: u32) -> Result<Grid, String> {
