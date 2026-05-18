@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use std::collections::{BTreeSet};
 use wasm_bindgen::prelude::*;
+use rand::prelude::*;
 
 mod clue;
 mod letter;
@@ -10,7 +11,7 @@ use gridcell::GridCell;
 
 use crate::grid_scandi::gridcell::PossibleCellState;
 
-enum LayoutError {
+pub enum LayoutError {
     NoPossibleDomain,
     LowClueDensity,
     HighClueDensity
@@ -91,5 +92,40 @@ impl Grid {
 
     fn clear(&mut self) -> () {
 
+    }
+
+    fn set_cell_state_from_remaining_possibilities(&mut self, width_idx: u32, height_idx: u32) -> PossibleCellState {
+
+        let curr_cell = &mut self.layout[width_idx as usize][height_idx as usize];
+
+        if curr_cell.can_still_be_clue() && curr_cell.can_still_be_letter() {
+            let random_num = rand::rng().random_range(0..100);
+
+            if random_num >= 75 {
+                let assigned_state = curr_cell.assign_clue_state_randomly();
+                return assigned_state;
+            } else {
+                curr_cell.assign_letter_state();
+                return PossibleCellState::Letter;
+            }
+        } else if curr_cell.can_still_be_clue() {
+            let assigned_state = curr_cell.assign_clue_state_randomly();
+            return assigned_state;
+
+        } else if curr_cell.can_still_be_letter() {
+            curr_cell.assign_letter_state();
+            return PossibleCellState::Letter;
+
+        } else {
+            panic!("Reached point of assigning state with no available possibilities.")
+        }
+    }
+
+    fn check_neighborhood(&self, width_idx: u32, height_idx: u32) -> Result<(), LayoutError> {
+        Ok(())
+    }
+
+    fn check_density(&self, num_clues: u32) -> Result<(), LayoutError> {
+        Ok(())
     }
 }

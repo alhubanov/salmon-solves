@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use std::{collections::BTreeSet};
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum SlotDirection {
     Down,
     DownOnRightSide,
