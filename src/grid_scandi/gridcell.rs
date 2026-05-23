@@ -11,7 +11,7 @@ pub enum CellType {
     Letter(Letter)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy)]
 pub enum PossibleCellState {
     Letter,
     Clue(SlotDirection)
@@ -20,40 +20,37 @@ pub enum PossibleCellState {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct GridCell {
     cell: Option<CellType>,
-    assigned_cell_state: Option<PossibleCellState>,
+    assigned_cell_states: BTreeSet<PossibleCellState>,
     possible_remaining_cell_states: BTreeSet<PossibleCellState>
 }
 
 impl GridCell {
-    pub fn build_generic_cell() -> Self {
+
+    pub fn build(row_idx: u32, col_idx: u32) -> Self {
         let mut cell_states = BTreeSet::new();
-        cell_states.insert(PossibleCellState::Letter);
-        cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
-        cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
-        cell_states.insert(PossibleCellState::Clue(SlotDirection::Right)); 
-        cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));  
+
+        if row_idx == 0 && col_idx == 0 {
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide)); 
+        } else if row_idx == 0 {
+            cell_states.insert(PossibleCellState::Letter);
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide));
+        } else if col_idx == 0 {
+            cell_states.insert(PossibleCellState::Letter);
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
+        } else {
+            cell_states.insert(PossibleCellState::Letter);
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
+        }
 
         Self { 
             cell: None,
-            assigned_cell_state: None,
+            assigned_cell_states: BTreeSet::new(),
             possible_remaining_cell_states: cell_states
         }
-    }
-
-    pub fn build_starting_cell() -> Self {
-        let mut cell_states = BTreeSet::new();
-        cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
-        cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));  
-
-        Self { 
-            cell: None, 
-            assigned_cell_state: None,
-            possible_remaining_cell_states: cell_states
-        }
-    }
-
-    pub fn reset(&mut self) {
-        *self = Self::build_generic_cell();
     }
 
     pub fn is_undetermined(&self) -> bool {
@@ -70,26 +67,52 @@ impl GridCell {
             .any(|state| matches!(state, PossibleCellState::Clue(_)))
     }
 
-    pub fn assign_clue_state_randomly(&mut self) -> PossibleCellState {
+    pub fn assign_clue_state_randomly(&mut self, rng: &mut ThreadRng, previously_assigned_states: &BTreeSet<PossibleCellState>) -> Option<PossibleCellState> {
 
+        // remove states that cannot be currently assigned
         let letter_state_removed = self.possible_remaining_cell_states.remove(&PossibleCellState::Letter);
+        for assigned_state in previously_assigned_states {
+            self.possible_remaining_cell_states.remove(&assigned_state);
+        }
 
-        let mut rng = rand::rng();
-        let sample_state = *self.possible_remaining_cell_states
+        // assign a state randomly
+        let sampled_state = self.possible_remaining_cell_states
                                 .iter()
-                                .choose(&mut rng)
-                                .expect("Never try to assign clue state randomly from an empty set!");
+                                .choose(rng)
+                                .cloned();
 
-        self.assigned_cell_state = Some(sample_state);
+        if let None = sampled_state {
+            return None;
+        } 
 
+        self.assigned_cell_states.insert(sampled_state.unwrap());
+
+        // insert back all removed states
         if letter_state_removed {
             self.possible_remaining_cell_states.insert(PossibleCellState::Letter);
         }
 
-        return sample_state; 
+        for assigned_state in previously_assigned_states {
+            self.possible_remaining_cell_states.insert(*assigned_state);
+        }
+
+        return Some(sampled_state.unwrap()); 
     }
 
     pub fn assign_letter_state(&mut self) -> () {
-        self.assigned_cell_state = Some(PossibleCellState::Letter);
+        self.assigned_cell_states.insert(PossibleCellState::Letter);
+    }
+
+    pub fn force_letter(&mut self) -> () {
+        self.possible_remaining_cell_states.clear();
+        self.possible_remaining_cell_states.insert(PossibleCellState::Letter);
+    }
+
+    pub fn force_clue(&mut self) -> () {
+        self.possible_remaining_cell_states.remove(&PossibleCellState::Letter);
+    }
+
+    pub fn is_clue_of_type(&self, clue_kind: SlotDirection) -> bool {
+        return self.assigned_cell_states.contains(&PossibleCellState::Clue(clue_kind));
     }
 }
