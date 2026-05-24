@@ -11,7 +11,7 @@ pub enum CellType {
     Letter(Letter)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum PossibleCellState {
     Letter,
     Clue(SlotDirection)
@@ -26,24 +26,36 @@ pub struct GridCell {
 
 impl GridCell {
 
-    pub fn build(row_idx: u32, col_idx: u32) -> Self {
+    pub fn build(row_idx: u32, col_idx: u32, width: u32, height: u32) -> Self {
         let mut cell_states = BTreeSet::new();
 
         if row_idx == 0 && col_idx == 0 {
             cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide)); 
-        } else if row_idx == 0 {
-            cell_states.insert(PossibleCellState::Letter);
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide));
-        } else if col_idx == 0 {
-            cell_states.insert(PossibleCellState::Letter);
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
             cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
+        } else if row_idx == 0 {
+            // cell_states.insert(PossibleCellState::Letter);
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
+
+            if col_idx < width - 1 {
+                cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide));
+            } 
+        } else if col_idx == 0 {
+            // cell_states.insert(PossibleCellState::Letter);
+            cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
+
+            if row_idx < height - 1 {
+                cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
+            }
         } else {
             cell_states.insert(PossibleCellState::Letter);
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
+
+            if row_idx < height - 2 {
+                cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
+            }
+
+            if col_idx < width - 2 {
+                cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
+            }
         }
 
         Self { 
@@ -53,8 +65,28 @@ impl GridCell {
         }
     }
 
-    pub fn is_undetermined(&self) -> bool {
-        return self.cell.is_none();
+    pub fn print(&self) -> () { 
+        if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::Down)) {
+            print!("|");
+        }
+        
+        if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::DownOnRightSide)) {
+            print!("]");
+        }
+        
+        if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::Right)) {
+            print!("-");
+        }
+        
+        if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::RightOnBottomSide)) {
+            print!("[");
+        }
+        
+        if self.assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Letter)) {
+            print!("_");
+        }
+
+        print!(" ");
     }
 
     pub fn can_still_be_letter(&self) -> bool {

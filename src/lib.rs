@@ -32,7 +32,12 @@ pub fn run() -> () {
 }
 
 pub fn build_scandinavian_grid_for_command_line(width: u32, height: u32) -> Result<ScandiGrid, String> {
-    let grid = ScandiGrid::new(width, height);
+    let mut grid = ScandiGrid::new(width, height);
+    
+    if let Err(_) = grid.construct_layout() {
+        return Err("Failed construction".to_string());
+    }
+
     return Ok(grid);
 }
 

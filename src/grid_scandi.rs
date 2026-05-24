@@ -26,7 +26,8 @@ pub struct Grid {
     height: u32,
     layout: Vec<Vec<GridCell>>,
     placed_words: BTreeSet<String>,
-    clue_density: f32
+    clue_density: f32,
+    target_clue_density: f32
 }
 
 impl Grid {
@@ -37,7 +38,7 @@ impl Grid {
             layout.push(Vec::new());
 
             for col_idx in 0..width {
-                let cell = GridCell::build(row_idx, col_idx);
+                let cell = GridCell::build(row_idx, col_idx, width, height);
 
                 layout[row_idx as usize].push(cell);
             }
@@ -45,19 +46,15 @@ impl Grid {
 
         let placed_words = BTreeSet::new();
         let clue_density = 0.0;
+        let target_clue_density = 0.25;
 
-        Grid { width, height, layout, placed_words, clue_density }
+        Grid { width, height, layout, placed_words, clue_density, target_clue_density }
     }
 
-    // TODO: rework this function properly
     pub fn print(&self) {
         for vertical_idx in 0..self.height {
             for horizontal_idx in 0..self.width {
-                if self.layout[vertical_idx as usize][horizontal_idx as usize].is_undetermined() {
-                    print!("# ");
-                } else {
-                    print!{"_ "};
-                }
+                self.layout[vertical_idx as usize][horizontal_idx as usize].print();
             }
 
             println!()
@@ -98,7 +95,7 @@ impl Grid {
         {
             let random_num = rng.random_range(0..100);
 
-            if random_num as f32 <= (self.clue_density * 100.0) 
+            if random_num as f32 <= (self.target_clue_density * 100.0) 
             {
                 let mut num_assigned_states = 0;
                 while num_assigned_states < 2 {
@@ -123,13 +120,17 @@ impl Grid {
         } 
         else if curr_cell.can_still_be_clue() 
         {
-            let assigned_state = curr_cell.assign_clue_state_randomly(&mut rng, &mut assigned_states);
-
-            if let None = assigned_state {
-                panic!("Assigned a None state for a cell!");
+            let mut num_assigned_states = 0;
+            while num_assigned_states < 2 {
+                match curr_cell.assign_clue_state_randomly(&mut rng, &assigned_states) {
+                    Some(state) => {
+                        assigned_states.insert(state);
+                        num_assigned_states += 1;
+                    },
+                    None => break
+                }
             }
 
-            assigned_states.insert(assigned_state.unwrap());
             return assigned_states;
         } 
         else if curr_cell.can_still_be_letter() 
@@ -145,33 +146,32 @@ impl Grid {
     }
 
     fn check_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &BTreeSet<PossibleCellState>) -> Result<(), LayoutError> {
-        
-        let mut iter = assigned_cell_states.iter();
-        if iter.all(|state| matches!(state, PossibleCellState::Clue(_))) {
 
-            if iter.any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::Right))) 
+        if assigned_cell_states.iter().all(|state| matches!(state, PossibleCellState::Clue(_))) {
+
+            if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::Right))) 
             {
                 self.ensure_clear_slot(vertical_idx, horizontal_idx, SlotDirection::Right)?;
             }
 
-            if iter.any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::RightOnBottomSide))) 
+            if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::RightOnBottomSide))) 
             {   
                 self.ensure_clear_slot(vertical_idx, horizontal_idx, SlotDirection::RightOnBottomSide)?;
                 self.ensure_wall_start(vertical_idx, horizontal_idx, SlotDirection::RightOnBottomSide)?;
             }
 
-            if iter.any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::Down))) 
+            if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::Down))) 
             {
                 self.ensure_clear_slot(vertical_idx, horizontal_idx, SlotDirection::Down)?;
             }
 
-            if iter.any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::DownOnRightSide))) 
+            if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(SlotDirection::DownOnRightSide))) 
             {
                 self.ensure_clear_slot(vertical_idx, horizontal_idx, SlotDirection::DownOnRightSide)?;
                 self.ensure_wall_start(vertical_idx, horizontal_idx, SlotDirection::DownOnRightSide)?;
             }
         }
-        else if iter.all(|state| matches!(state, PossibleCellState::Letter))
+        else if assigned_cell_states.iter().all(|state| matches!(state, PossibleCellState::Letter))
         {
             if self.is_start_of_angled_horizontal_slot(vertical_idx, horizontal_idx) {
                 self.prevent_letter_underneath(vertical_idx, horizontal_idx);
