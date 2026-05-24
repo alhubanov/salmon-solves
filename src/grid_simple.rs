@@ -64,7 +64,7 @@ enum WordDirection {
 }
 
 #[derive(Serialize, Deserialize)]
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = GridSimple)]
 pub struct Grid {
     width: u32,
     height: u32,
