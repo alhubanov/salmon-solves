@@ -1,14 +1,10 @@
 // All the settings that adapt per crossword type
 const GRID_OPTIONS = {
-  american: ["15x15", "21x21"],
-  british:  ["15x15 blocked", "15x15 barred"],
-  scandinavian: ["11x11", "13x13", "15x15"],
+  simple: ["15x15", "21x21"]
 };
 
 const DIFFICULTIES = {
-  american:    ["Beginner", "Medium", "Expert"],
-  british:     ["Beginner", "Standard", "Barred"],
-  scandinavian:["Beginner", "Standard", "Expert"],
+  simple:    ["Beginner", "Medium", "Expert"]
 };
 
 const THEMES = [
@@ -52,9 +48,7 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset }) {
     <div className="field-group">
     <div className="field-label">Type</div>
     <select className="field-select" value={type} onChange={handleTypeChange}>
-        <option value="american">American</option>
-        <option value="british">British (cryptic)</option>
-        <option value="scandinavian">Scandinavian</option>
+        <option value="simple">Simple</option>
     </select>
     </div>
 
