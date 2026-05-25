@@ -89,16 +89,6 @@ impl GridCell {
         print!(" ");
     }
 
-    pub fn can_still_be_letter(&self) -> bool {
-        self.possible_remaining_cell_states.contains(&PossibleCellState::Letter)
-    }
-
-    pub fn can_still_be_clue(&self) -> bool {
-        self.possible_remaining_cell_states
-            .iter()
-            .any(|state| matches!(state, PossibleCellState::Clue(_)))
-    }
-
     pub fn assign_clue_state_randomly(&mut self, rng: &mut ThreadRng, previously_assigned_states: &BTreeSet<PossibleCellState>) -> Option<PossibleCellState> {
 
         // remove states that cannot be currently assigned
@@ -142,6 +132,16 @@ impl GridCell {
 
     pub fn force_clue(&mut self) -> () {
         self.possible_remaining_cell_states.remove(&PossibleCellState::Letter);
+    }
+
+    pub fn can_still_be_letter(&self) -> bool {
+        self.possible_remaining_cell_states.contains(&PossibleCellState::Letter)
+    }
+
+    pub fn can_still_be_clue(&self) -> bool {
+        self.possible_remaining_cell_states
+            .iter()
+            .any(|state| matches!(state, PossibleCellState::Clue(_)))
     }
 
     pub fn is_clue_of_type(&self, clue_kind: SlotDirection) -> bool {

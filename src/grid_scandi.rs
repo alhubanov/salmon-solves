@@ -94,7 +94,6 @@ impl Grid {
         if curr_cell.can_still_be_clue() && curr_cell.can_still_be_letter() 
         {
             let random_num = rng.random_range(0..100);
-
             if random_num as f32 <= (self.target_clue_density * 100.0) 
             {
                 let mut num_assigned_states = 0;
@@ -276,7 +275,7 @@ impl Grid {
     }
 
     fn is_start_of_angled_horizontal_slot(&self, vertical_idx: u32, horizontal_idx: u32) -> bool {
-        return vertical_idx > 0 && self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].is_clue_of_type(SlotDirection::DownOnRightSide)
+        return vertical_idx > 0 && self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].is_clue_of_type(SlotDirection::RightOnBottomSide)
     }
 
     fn is_start_of_angled_vertical_slot(&self, vertical_idx: u32, horizontal_idx: u32) -> bool {
