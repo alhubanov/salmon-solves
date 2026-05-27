@@ -71,6 +71,7 @@ impl Grid {
                 let assigned_cell_states = self.set_cell_state_from_remaining_possibilities(vertical_idx, horizontal_idx);
                 if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(_))) {
                     num_clues += 1;
+                    self.clue_density = num_clues as f32 / ((self.width * self.height) as f32);
                 }
 
                 if let Err(_) = self.check_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
@@ -86,6 +87,7 @@ impl Grid {
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
 
+        let placing_clue_creates_inner_two_letter_word = self.placing_clue_here_creates_a_two_letter_word_inside_grid(vertical_idx, horizontal_idx);
         let curr_cell = &mut self.layout[vertical_idx as usize][horizontal_idx as usize];
 
         let mut rng = rand::rng();
@@ -94,54 +96,62 @@ impl Grid {
         if curr_cell.can_still_be_clue() && curr_cell.can_still_be_letter() 
         {
             let random_num = rng.random_range(0..100);
-            if random_num as f32 <= (self.target_clue_density * 100.0) 
+            if !placing_clue_creates_inner_two_letter_word && random_num as f32 <= (self.target_clue_density * 100.0) 
             {
-                let mut num_assigned_states = 0;
-                while num_assigned_states < 2 {
-                    match curr_cell.assign_clue_state_randomly(&mut rng, &assigned_states) {
-                        Some(state) => {
-                            assigned_states.insert(state);
-                            num_assigned_states += 1;
-                        },
-                        None => break
-                    }
-                }
-
-                return assigned_states;
+                return Self::assign_clue(curr_cell, rng, assigned_states);
             } 
             else 
             {
-                curr_cell.assign_letter_state();
-                assigned_states.insert(PossibleCellState::Letter);
-                return assigned_states;
+                return Self::assign_letter(curr_cell, assigned_states); 
             }
-
         } 
         else if curr_cell.can_still_be_clue() 
         {
-            let mut num_assigned_states = 0;
-            while num_assigned_states < 2 {
-                match curr_cell.assign_clue_state_randomly(&mut rng, &assigned_states) {
-                    Some(state) => {
-                        assigned_states.insert(state);
-                        num_assigned_states += 1;
-                    },
-                    None => break
-                }
-            }
-
-            return assigned_states;
+            return Self::assign_clue(curr_cell, rng, assigned_states);
         } 
         else if curr_cell.can_still_be_letter() 
         {
-            curr_cell.assign_letter_state();
-            assigned_states.insert(PossibleCellState::Letter);
-            return assigned_states;
+            return Self::assign_letter(curr_cell, assigned_states); 
         } 
         else 
         {
             panic!("Reached point of assigning state with no available possibilities.")
         }
+    }
+
+    fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: BTreeSet<PossibleCellState>) -> BTreeSet<PossibleCellState> {
+        curr_cell.assign_letter_state();
+        assigned_states.insert(PossibleCellState::Letter);
+        return assigned_states;
+    }
+
+    fn assign_clue(curr_cell: &mut GridCell, mut rng: ThreadRng, mut assigned_states: BTreeSet<PossibleCellState>) -> BTreeSet<PossibleCellState> {
+        let mut num_assigned_states = 0;
+        while num_assigned_states < 2 {
+            match curr_cell.assign_clue_state_randomly(&mut rng, &assigned_states) {
+                Some(state) => {
+                    assigned_states.insert(state);
+                    num_assigned_states += 1;
+                },
+                None => break
+            }
+        }
+
+        return assigned_states;
+    }
+
+    fn placing_clue_here_creates_a_two_letter_word_inside_grid(&self, vertical_idx: u32, horizontal_idx: u32) -> bool {
+        if vertical_idx <= 2 || horizontal_idx <= 2 {
+            return true;
+        }
+
+        if self.layout[(vertical_idx - 3) as usize][horizontal_idx as usize].is_clue() || 
+            self.layout[vertical_idx as usize][(horizontal_idx - 3) as usize].is_clue() 
+        {
+            return true;
+        }
+
+        false
     }
 
     fn check_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &BTreeSet<PossibleCellState>) -> Result<(), LayoutError> {
