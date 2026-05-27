@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::collections::{BTreeSet};
+use std::{cmp::max, collections::BTreeSet};
 use wasm_bindgen::prelude::*;
 use rand::prelude::*;
 
@@ -26,8 +26,11 @@ pub struct Grid {
     height: u32,
     layout: Vec<Vec<GridCell>>,
     placed_words: BTreeSet<String>,
-    clue_density: f32,
-    target_clue_density: f32
+    target_clue_density: f32,
+    clues_placed: u32,
+    num_cells_accessed: u32,
+    minimum_word_length: u32,
+    maximum_word_length: u32
 }
 
 impl Grid {
@@ -45,10 +48,15 @@ impl Grid {
         }
 
         let placed_words = BTreeSet::new();
-        let clue_density = 0.0;
-        let target_clue_density = 0.25;
+        
+        let target_clue_density = 0.20;
+        let num_cells_accessed = 0;
+        let clues_placed = 0;
 
-        Grid { width, height, layout, placed_words, clue_density, target_clue_density }
+        let minimum_word_length = 2;
+        let maximum_word_length = 10;
+
+        Grid { width, height, layout, placed_words, target_clue_density, clues_placed, num_cells_accessed, minimum_word_length, maximum_word_length }
     }
 
     pub fn print(&self) {
@@ -63,22 +71,15 @@ impl Grid {
 
     pub fn construct_layout(&mut self) -> Result<(), LayoutError> {
 
-        let mut num_clues = 0;
-
         for vertical_idx in 0..self.height {
             for horizontal_idx in 0..self.width {
 
                 let assigned_cell_states = self.set_cell_state_from_remaining_possibilities(vertical_idx, horizontal_idx);
-                if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(_))) {
-                    num_clues += 1;
-                    self.clue_density = num_clues as f32 / ((self.width * self.height) as f32);
-                }
-
                 if let Err(_) = self.check_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
                     // backtrack
                 }
 
-                self.check_density(num_clues)?;
+                self.num_cells_accessed += 1;
             }
         }
 
@@ -87,17 +88,42 @@ impl Grid {
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
 
-        let placing_clue_creates_inner_two_letter_word = self.placing_clue_here_creates_a_two_letter_word_inside_grid(vertical_idx, horizontal_idx);
+        // let current_word_len = self.current_word_len(vertical_idx, horizontal_idx);
+
         let curr_cell = &mut self.layout[vertical_idx as usize][horizontal_idx as usize];
 
         let mut rng = rand::rng();
-        let mut assigned_states : BTreeSet<PossibleCellState> = BTreeSet::new();
+        let assigned_states : BTreeSet<PossibleCellState> = BTreeSet::new();
 
         if curr_cell.can_still_be_clue() && curr_cell.can_still_be_letter() 
         {
-            let random_num = rng.random_range(0..100);
-            if !placing_clue_creates_inner_two_letter_word && random_num as f32 <= (self.target_clue_density * 100.0) 
+            let current_density = if self.num_cells_accessed > 0 { self.clues_placed as f32 / self.num_cells_accessed as f32 } else { 0.0 };
+            let deficit_rate = (self.target_clue_density - current_density) * 3.0;
+            let base_probability = (self.target_clue_density + deficit_rate).clamp(0.0, 1.0);
+
+            println!("Prob for {}, {} is: {}", vertical_idx, horizontal_idx, base_probability);
+
+            // let pressure_for_min = if current_word_len < self.minimum_word_length {
+            //     -0.10 * (self.minimum_word_length - current_word_len) as f32
+            // } else {
+            //     0.0
+            // };
+
+            // let pressure_for_max = if current_word_len > self.maximum_word_length {
+            //     0.10 * (current_word_len - self.maximum_word_length) as f32
+            // } else {
+            //     0.0
+            // };
+
+            // let noise: f32 = rng.random_range(-0.03..0.03);
+
+            let mut clue_probability = base_probability;
+            clue_probability = clue_probability.clamp(0.00, 1.0);
+
+            let random_num :f32 = rng.random();
+            if random_num as f32 <= clue_probability 
             {
+                self.clues_placed += 1;
                 return Self::assign_clue(curr_cell, rng, assigned_states);
             } 
             else 
@@ -117,6 +143,39 @@ impl Grid {
         {
             panic!("Reached point of assigning state with no available possibilities.")
         }
+    }
+
+    fn current_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> u32 {
+        let mut slot_count = 0;
+        let mut curr_vertical_idx = vertical_idx;
+        let mut curr_horizontal_idx = horizontal_idx;
+
+        let vertical_word_len = loop {
+            if self.layout[curr_vertical_idx as usize][horizontal_idx as usize].is_clue() {
+                break slot_count;
+            } else if curr_vertical_idx == 0 {
+                slot_count += 1;
+                break slot_count;
+            }
+
+            slot_count += 1;
+            curr_vertical_idx -= 1;
+        };
+
+        slot_count = 0;
+        let horizontal_word_len = loop {
+            if self.layout[vertical_idx as usize][curr_horizontal_idx as usize].is_clue() {
+                break slot_count;
+            } else if curr_horizontal_idx == 0 {
+                slot_count += 1;
+                break slot_count;
+            }
+
+            slot_count += 1;
+            curr_horizontal_idx -= 1;
+        };
+
+        return max(vertical_word_len, horizontal_word_len);
     }
 
     fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: BTreeSet<PossibleCellState>) -> BTreeSet<PossibleCellState> {
@@ -140,19 +199,19 @@ impl Grid {
         return assigned_states;
     }
 
-    fn placing_clue_here_creates_a_two_letter_word_inside_grid(&self, vertical_idx: u32, horizontal_idx: u32) -> bool {
-        if vertical_idx <= 2 || horizontal_idx <= 2 {
-            return true;
-        }
+    // fn placing_clue_here_creates_a_two_letter_word_inside_grid(&self, vertical_idx: u32, horizontal_idx: u32) -> bool {
+    //     if vertical_idx <= 2 || horizontal_idx <= 2 {
+    //         return true;
+    //     }
 
-        if self.layout[(vertical_idx - 3) as usize][horizontal_idx as usize].is_clue() || 
-            self.layout[vertical_idx as usize][(horizontal_idx - 3) as usize].is_clue() 
-        {
-            return true;
-        }
+    //     if self.layout[(vertical_idx - 3) as usize][horizontal_idx as usize].is_clue() || 
+    //         self.layout[vertical_idx as usize][(horizontal_idx - 3) as usize].is_clue() 
+    //     {
+    //         return true;
+    //     }
 
-        false
-    }
+    //     false
+    // }
 
     fn check_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &BTreeSet<PossibleCellState>) -> Result<(), LayoutError> {
 
@@ -306,9 +365,5 @@ impl Grid {
         }
 
         self.layout[vertical_idx as usize][(horizontal_idx + 1) as usize].force_clue();
-    }
-
-    fn check_density(&self, num_clues: u32) -> Result<(), LayoutError> {
-        Ok(())
     }
 }
