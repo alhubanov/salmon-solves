@@ -1,8 +1,8 @@
 use rand::{self, seq::SliceRandom};
 use wasm_bindgen::prelude::*;
 
-use crate::grid_simple::Grid as SimpleGrid;
-use crate::grid_scandi::Grid as ScandiGrid;
+use crate::grid_simple::SimpleGrid;
+use crate::grid_scandi::ScandiGrid as ScandiGrid;
 
 pub mod grid_scandi;
 pub mod grid_simple;

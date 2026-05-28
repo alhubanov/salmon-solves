@@ -11,7 +11,7 @@ pub fn assert_cell_is_not_filled(cell: &GridCell) {
     assert_eq!(cell.cell_state, CellState::NotFilled);
 }
 
-pub fn assert_horizontal_word_placement_starting_at_idx(grid: &Grid, height_idx: usize, width_idx: usize, word: &String) {
+pub fn assert_horizontal_word_placement_starting_at_idx(grid: &SimpleGrid, height_idx: usize, width_idx: usize, word: &String) {
 
     let mut count = 0;
     for letter in word.chars() {
@@ -20,7 +20,7 @@ pub fn assert_horizontal_word_placement_starting_at_idx(grid: &Grid, height_idx:
     }
 }
 
-pub fn assert_vertical_word_placement_starting_at_idx(grid: &Grid, height_idx: usize, width_idx: usize, word: &String) {
+pub fn assert_vertical_word_placement_starting_at_idx(grid: &SimpleGrid, height_idx: usize, width_idx: usize, word: &String) {
 
     let mut count = 0;
     for letter in word.chars() {

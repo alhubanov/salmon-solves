@@ -31,14 +31,14 @@ enum WordDirection {
 
 #[derive(Serialize, Deserialize)]
 #[wasm_bindgen(js_name = GridSimple)]
-pub struct Grid {
+pub struct SimpleGrid {
     width: u32,
     height: u32,
     layout: Vec<Vec<GridCell>>,
     placed_words: HashSet<String>
 }
 
-impl Grid {
+impl SimpleGrid {
     pub fn new(width: u32, height: u32) -> Self {
         let mut layout : Vec<Vec<GridCell>> = Vec::new();
 
@@ -53,7 +53,7 @@ impl Grid {
 
         let placed_words = HashSet::new();
 
-        Grid { width, height, layout, placed_words }
+        SimpleGrid { width, height, layout, placed_words }
     }
 
     pub fn print(&self) {

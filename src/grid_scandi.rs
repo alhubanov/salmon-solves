@@ -21,7 +21,7 @@ pub enum LayoutError {
 
 #[derive(Serialize, Deserialize)]
 #[wasm_bindgen(js_name = GridScandi)]
-pub struct Grid {
+pub struct ScandiGrid {
     width: u32,
     height: u32,
     layout: Vec<Vec<GridCell>>,
@@ -33,7 +33,7 @@ pub struct Grid {
     maximum_word_length: u32
 }
 
-impl Grid {
+impl ScandiGrid {
     pub fn new(width: u32, height: u32) -> Self {
         let mut layout : Vec<Vec<GridCell>> = Vec::new();
 
@@ -56,7 +56,7 @@ impl Grid {
         let minimum_word_length = 2;
         let maximum_word_length = 10;
 
-        Grid { width, height, layout, placed_words, target_clue_density, clues_placed, num_cells_accessed, minimum_word_length, maximum_word_length }
+        ScandiGrid { width, height, layout, placed_words, target_clue_density, clues_placed, num_cells_accessed, minimum_word_length, maximum_word_length }
     }
 
     pub fn print(&self) {
