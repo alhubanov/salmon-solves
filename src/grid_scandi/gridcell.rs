@@ -144,11 +144,11 @@ impl GridCell {
             .any(|state| matches!(state, PossibleCellState::Clue(_)))
     }
 
-    pub fn is_clue(&self) -> bool {
-        self.assigned_cell_states
-            .iter()
-            .any(|state| matches!(state, PossibleCellState::Clue(_)))
-    }
+    // pub fn is_clue(&self) -> bool {
+    //     self.assigned_cell_states
+    //         .iter()
+    //         .any(|state| matches!(state, PossibleCellState::Clue(_)))
+    // }
 
     pub fn is_clue_of_type(&self, clue_kind: SlotDirection) -> bool {
         return self.assigned_cell_states.contains(&PossibleCellState::Clue(clue_kind));
