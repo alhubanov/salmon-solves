@@ -2,6 +2,7 @@ use num::Integer;
 use std::collections::{HashSet};
 use serde::{Serialize, Deserialize};
 use wasm_bindgen::prelude::*;
+use rand::{self, seq::SliceRandom};
 
 #[cfg(test)]
 mod unit_tests;
@@ -10,6 +11,10 @@ mod test_helpers;
 
 mod gridcell;
 use gridcell::{GridCell, CellState, CrossingState};
+
+use crate::grid::Grid;
+
+static WORDS: &str = include_str!("../word_files/common_english_words_long.txt");
 
 pub enum WordPlacementError {
     DoesNotFitByWidth,
@@ -38,8 +43,8 @@ pub struct SimpleGrid {
     placed_words: HashSet<String>
 }
 
-impl SimpleGrid {
-    pub fn new(width: u32, height: u32) -> Self {
+impl Grid for SimpleGrid {
+    fn initialize(width: u32, height: u32) -> Self {
         let mut layout : Vec<Vec<GridCell>> = Vec::new();
 
         for row_idx in 0..height {
@@ -53,10 +58,25 @@ impl SimpleGrid {
 
         let placed_words = HashSet::new();
 
-        SimpleGrid { width, height, layout, placed_words }
+        Self { width, height, layout, placed_words }
     }
 
-    pub fn print(&self) {
+    fn construct(&mut self) -> () {
+        let mut words_vec : Vec<&str> = WORDS.lines().collect();
+
+        let mut rng = rand::rng();
+        words_vec.shuffle(&mut rng);
+
+        for word in words_vec {
+            if let Err(_) = self.place_word(&word.to_owned()) {
+                continue;
+            }
+        }
+
+        return;
+    }
+
+    fn print(&self) -> () {
         for vertical_idx in 0..self.height {
             for horizontal_idx in 0..self.width {
                 if self.layout[vertical_idx as usize][horizontal_idx as usize].cell_state == CellState::NotFilled {
@@ -69,8 +89,11 @@ impl SimpleGrid {
             println!()
         }
     }
+}
 
-    pub fn place_word(&mut self, word: &String) -> Result<(), WordPlacementError> {
+impl SimpleGrid {
+
+    fn place_word(&mut self, word: &String) -> Result<(), WordPlacementError> {
 
         if self.placed_words.is_empty() 
         {

@@ -1,14 +1,13 @@
-use rand::{self, seq::SliceRandom};
 use wasm_bindgen::prelude::*;
 
 use crate::grid_simple::SimpleGrid;
-use crate::grid_scandi::ScandiGrid as ScandiGrid;
+use crate::grid_scandi::ScandiGrid;
+use crate::grid::Grid;
 
-pub mod grid_scandi;
-pub mod grid_simple;
-pub mod input_utilities;
-
-static WORDS: &str = include_str!("../word_files/common_english_words_long.txt");
+mod grid;
+mod grid_scandi;
+mod grid_simple;
+mod input_utilities;
 
 pub fn run() -> () {
     let mut input = String::new();
@@ -16,13 +15,7 @@ pub fn run() -> () {
     let width = input_utilities::take_dimension_value_as_input("width", &mut input);
     let height = input_utilities::take_dimension_value_as_input("height", &mut input);
 
-    let grid = match build_scandinavian_grid_for_command_line(width, height) {
-        Ok(res) => res,
-        Err(s) => { 
-            println!("{}", s); 
-            return; 
-        } 
-    };
+    let grid : ScandiGrid = build_crossword_grid_for_command_line(width, height);
 
     println!();
     println!("Here's a crossword: ");
@@ -31,47 +24,19 @@ pub fn run() -> () {
     grid.print();
 }
 
-pub fn build_scandinavian_grid_for_command_line(width: u32, height: u32) -> Result<ScandiGrid, String> {
-    let mut grid = ScandiGrid::new(width, height);
-    
-    if let Err(_) = grid.construct_layout() {
-        return Err("Failed construction".to_string());
-    }
+pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32) -> T {
 
-    return Ok(grid);
-}
+    let mut grid = T::initialize(width, height);
+    grid.construct();
 
-pub fn build_crossword_grid_for_command_line(width: u32, height: u32) -> Result<SimpleGrid, String> {
-
-    let mut grid = SimpleGrid::new(width, height);
-    let mut words_vec : Vec<&str> = WORDS.lines().collect();
-
-    let mut rng = rand::rng();
-    words_vec.shuffle(&mut rng);
-
-    for word in words_vec {
-        if let Err(_) = grid.place_word(&word.to_owned()) {
-            continue;
-        }
-    }
-
-    return Ok(grid);
+    return grid;
 } 
 
 #[wasm_bindgen]
-pub fn build_crossword_grid(width: u32, height: u32) -> Result<JsValue, String> {
+pub fn build_crossword_grid(width: u32, height: u32) -> Result<JsValue, serde_wasm_bindgen::Error> {
 
-    let mut grid = SimpleGrid::new(width, height);
-    let mut words_vec : Vec<&str> = WORDS.lines().collect();
+    let mut grid = SimpleGrid::initialize(width, height);
+    grid.construct();
 
-    let mut rng = rand::rng();
-    words_vec.shuffle(&mut rng);
-
-    for word in words_vec {
-        if let Err(_) = grid.place_word(&word.to_owned()) {
-            continue;
-        }
-    }
-
-    return Ok(serde_wasm_bindgen::to_value(&grid).unwrap());
+    return serde_wasm_bindgen::to_value(&grid);
 } 

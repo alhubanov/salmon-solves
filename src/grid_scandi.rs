@@ -8,14 +8,14 @@ mod letter;
 mod gridcell;
 
 use gridcell::GridCell;
-
 use crate::grid_scandi::{clue::SlotDirection, gridcell::PossibleCellState};
+use crate::grid::Grid;
 
 pub enum LayoutError {
-    NoPossibleDomain,
-    LowClueDensity,
-    HighClueDensity,
-    IsolatedLetter,
+    // NoPossibleDomain,
+    // LowClueDensity,
+    // HighClueDensity,
+    // IsolatedLetter,
     CannotEnsureAClearWordSlot
 }
 
@@ -33,8 +33,8 @@ pub struct ScandiGrid {
     maximum_word_length: u32
 }
 
-impl ScandiGrid {
-    pub fn new(width: u32, height: u32) -> Self {
+impl Grid for ScandiGrid {
+    fn initialize(width: u32, height: u32) -> Self {
         let mut layout : Vec<Vec<GridCell>> = Vec::new();
 
         for row_idx in 0..height {
@@ -56,21 +56,10 @@ impl ScandiGrid {
         let minimum_word_length = 2;
         let maximum_word_length = 10;
 
-        ScandiGrid { width, height, layout, placed_words, target_clue_density, clues_placed, num_cells_accessed, minimum_word_length, maximum_word_length }
+        Self { width, height, layout, placed_words, target_clue_density, clues_placed, num_cells_accessed, minimum_word_length, maximum_word_length }
     }
 
-    pub fn print(&self) {
-        for vertical_idx in 0..self.height {
-            for horizontal_idx in 0..self.width {
-                self.layout[vertical_idx as usize][horizontal_idx as usize].print();
-            }
-
-            println!()
-        }
-    }
-
-    pub fn construct_layout(&mut self) -> Result<(), LayoutError> {
-
+    fn construct(&mut self) -> () {
         for vertical_idx in 0..self.height {
             for horizontal_idx in 0..self.width {
 
@@ -82,9 +71,20 @@ impl ScandiGrid {
                 self.num_cells_accessed += 1;
             }
         }
-
-        Ok(())
     }
+
+    fn print(&self) -> () {
+        for vertical_idx in 0..self.height {
+            for horizontal_idx in 0..self.width {
+                self.layout[vertical_idx as usize][horizontal_idx as usize].print();
+            }
+
+            println!()
+        }
+    }
+}
+
+impl ScandiGrid {
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
 
