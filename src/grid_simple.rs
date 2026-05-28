@@ -8,42 +8,8 @@ mod unit_tests;
 #[cfg(test)]
 mod test_helpers;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
-enum CellState {
-    Filled,
-    NotFilled,
-    TentativelyFilled
-}
-
-#[derive(PartialEq, Serialize, Deserialize)]
-enum CrossingState {
-    Is,
-    IsTentatively,
-    IsNot
-}
-
-#[derive(Serialize, Deserialize)]
-struct GridCell {
-    cell_value: char,
-    cell_state: CellState,
-    is_a_crossing: CrossingState
-}
-
-impl GridCell {
-    fn new() -> Self {
-        Self { cell_value: '_', cell_state: CellState::NotFilled, is_a_crossing: CrossingState::IsNot }
-    }
-
-    fn reset(&mut self) {
-        self.cell_value = '_';
-        self.cell_state = CellState::NotFilled;
-        self.reset_crossing_state();
-    }
-
-    fn reset_crossing_state(&mut self) {
-        self.is_a_crossing = CrossingState::IsNot;
-    }
-}
+mod gridcell;
+use gridcell::{GridCell, CellState, CrossingState};
 
 pub enum WordPlacementError {
     DoesNotFitByWidth,

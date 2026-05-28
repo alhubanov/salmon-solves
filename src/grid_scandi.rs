@@ -88,8 +88,6 @@ impl Grid {
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
 
-        // let current_word_len = self.current_word_len(vertical_idx, horizontal_idx);
-
         let curr_cell = &mut self.layout[vertical_idx as usize][horizontal_idx as usize];
 
         let mut rng = rand::rng();
