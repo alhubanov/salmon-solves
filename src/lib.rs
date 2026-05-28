@@ -1,7 +1,7 @@
 use rand::{self, seq::SliceRandom};
 use wasm_bindgen::prelude::*;
 
-use crate::grid_simple::Grid;
+use crate::grid_simple::Grid as SimpleGrid;
 use crate::grid_scandi::Grid as ScandiGrid;
 
 pub mod grid_scandi;
@@ -41,9 +41,9 @@ pub fn build_scandinavian_grid_for_command_line(width: u32, height: u32) -> Resu
     return Ok(grid);
 }
 
-pub fn build_crossword_grid_for_command_line(width: u32, height: u32) -> Result<Grid, String> {
+pub fn build_crossword_grid_for_command_line(width: u32, height: u32) -> Result<SimpleGrid, String> {
 
-    let mut grid = Grid::new(width, height);
+    let mut grid = SimpleGrid::new(width, height);
     let mut words_vec : Vec<&str> = WORDS.lines().collect();
 
     let mut rng = rand::rng();
@@ -61,7 +61,7 @@ pub fn build_crossword_grid_for_command_line(width: u32, height: u32) -> Result<
 #[wasm_bindgen]
 pub fn build_crossword_grid(width: u32, height: u32) -> Result<JsValue, String> {
 
-    let mut grid = Grid::new(width, height);
+    let mut grid = SimpleGrid::new(width, height);
     let mut words_vec : Vec<&str> = WORDS.lines().collect();
 
     let mut rng = rand::rng();
