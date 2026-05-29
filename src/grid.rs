@@ -1,5 +1,44 @@
+use crate::{grid_scandi::ScandiGrid, grid_simple::SimpleGrid, ui_input_utilities::GridType};
+use serde::{Serialize, Deserialize};
+
 pub trait Grid {
     fn initialize(width: u32, height: u32) -> Self;
     fn construct(&mut self) -> ();
     fn print(&self) -> ();
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GenericGrid {
+    Simple(SimpleGrid),
+    Scandi(ScandiGrid)
+}
+
+impl GenericGrid {
+    pub fn initialize(grid_type: &GridType, width: u32, height: u32) -> Self {
+        match grid_type {
+            GridType::Scandi => GenericGrid::Scandi(ScandiGrid::initialize(width, height)),
+            GridType::Simple => GenericGrid::Simple(SimpleGrid::initialize(width, height)),
+        }
+    }
+}
+
+impl Grid for GenericGrid {
+    fn initialize(_width: u32, _height: u32) -> Self {
+        panic!("Use GenericGrid::initialize(grid_type, width, height) instead")
+    }
+
+    fn construct(&mut self) -> () {
+        match self {
+            Self::Scandi(scandi_grid) => scandi_grid.construct(),
+            Self::Simple(simple_grid) => simple_grid.construct()
+        }
+    }
+
+    fn print(&self) -> () {
+        match self {
+            Self::Scandi(scandi_grid) => scandi_grid.print(),
+            Self::Simple(simple_grid) => simple_grid.print()
+        }
+    }
 }

@@ -6,8 +6,8 @@ import "./App.css";
 import init from "../../pkg/crossy"
 
 const DEFAULT_SETTINGS = {
-  type: "simple",
-  difficulty: "beginner",
+  type: "Simple",
+  difficulty: "Beginner",
   grid: "15x15",
   themes: [], // empty = random
 };

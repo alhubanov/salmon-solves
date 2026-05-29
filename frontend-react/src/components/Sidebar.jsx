@@ -1,10 +1,10 @@
 // All the settings that adapt per crossword type
 const GRID_OPTIONS = {
-  simple: ["15x15", "21x21"]
+  Simple: ["15x15", "21x21"]
 };
 
 const DIFFICULTIES = {
-  simple:    ["Beginner", "Medium", "Expert"]
+  Simple:    ["Beginner", "Medium", "Expert"]
 };
 
 const THEMES = [
@@ -56,7 +56,7 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sideb
           <div className="field-group">
           <div className="field-label">Type</div>
           <select className="field-select" value={type} onChange={handleTypeChange}>
-              <option value="simple">Simple</option>
+              <option value="Simple">Simple</option>
           </select>
           </div>
 

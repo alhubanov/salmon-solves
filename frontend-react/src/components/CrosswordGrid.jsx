@@ -15,7 +15,15 @@ export default function CrosswordGrid({ settings, generated }) {
 
   useEffect(() => {
     if (generated) {
-      const grid = build_crossword_grid(cols, rows);
+
+      // TODO: incorporate all settings properly
+      let partial_settings = {
+        grid_type: settings.type,
+        difficulty_level: settings.difficulty,
+        themes: settings.themes
+      }
+
+      const grid = build_crossword_grid(cols, rows, partial_settings);
       // TODO: don't flatten
       const cells = grid.layout.flat();
 
