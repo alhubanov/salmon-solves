@@ -7,13 +7,13 @@ use crate::grid::Grid;
 mod grid;
 mod grid_scandi;
 mod grid_simple;
-mod input_utilities;
+mod terminal_input_utilities;
 
 pub fn run() -> () {
     let mut input = String::new();
 
-    let width = input_utilities::take_dimension_value_as_input("width", &mut input);
-    let height = input_utilities::take_dimension_value_as_input("height", &mut input);
+    let width = terminal_input_utilities::take_dimension_value_as_input("width", &mut input);
+    let height = terminal_input_utilities::take_dimension_value_as_input("height", &mut input);
 
     let grid : ScandiGrid = build_crossword_grid_for_command_line(width, height);
 
@@ -39,4 +39,4 @@ pub fn build_crossword_grid(width: u32, height: u32) -> Result<JsValue, serde_wa
     grid.construct();
 
     return serde_wasm_bindgen::to_value(&grid);
-} 
+}   
