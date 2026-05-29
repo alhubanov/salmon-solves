@@ -33,7 +33,7 @@ export default function CrosswordGrid({ settings, generated }) {
           <rect x="4" y="26" width="18" height="18" rx="2" fill="#e4e2db"/>
           <rect x="26" y="26" width="18" height="18" rx="2" fill="#6c63ff" opacity="0.3"/>
         </svg>
-        <p>Configure your settings and hit<br /><strong>Generate crossword</strong> to start.</p>
+        <p style={{ fontSize: "20px" }}>Configure your settings and hit<br /><strong>Generate crossword</strong> to start.</p>
       </div>
     );
   }
