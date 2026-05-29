@@ -18,7 +18,7 @@ const THEMES = [
   "Wordplay",
 ];
 
-export default function Sidebar({ settings, onUpdate, onGenerate, onReset }) {
+export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sidebarOpen, onToggle }) {
   const { type, difficulty, grid, themes } = settings;
 
   // When type changes, reset grid and difficulty to first valid option
@@ -42,80 +42,92 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset }) {
 
   return (
    <>
-    <h1>Create your crossword!</h1>
+    <div className="sidebar-inner">
+      <button className="sidebar-toggle" onClick={onToggle} title="Toggle sidebar">
+        {sidebarOpen ? "← hide" : "→ show"}
+      </button>
 
-    {/* Type */}
-    <div className="field-group">
-    <div className="field-label">Type</div>
-    <select className="field-select" value={type} onChange={handleTypeChange}>
-        <option value="simple">Simple</option>
-    </select>
-    </div>
+      {sidebarOpen && ( 
+        <div className="sidebar-content">
 
-    {/* Grid */}
-    <div className="field-group">
-    <div className="field-label">Grid</div>
-    <select
-        className="field-select"
-        value={grid}
-        onChange={(e) => onUpdate("grid", e.target.value)}
-    >
-        {grids.map((g) => (
-        <option key={g} value={g}>{g}</option>
-        ))}
-    </select>
-    </div>
+          <h2 style={{ marginBottom: "24px" }}>Create your crossword!</h2>
 
-    {/* Difficulty */}
-    <div className="field-group">
-    <div className="field-label">Difficulty</div>
-    <div className="diff-row">
-        {diffs.map((d) => (
-        <button
-            key={d}
-            className={`diff-btn ${difficulty === d.toLowerCase() ? "active" : ""}`}
-            onClick={() => onUpdate("difficulty", d.toLowerCase())}
-        >
-            {d}
-        </button>
+          {/* Type */}
+          <div className="field-group">
+          <div className="field-label">Type</div>
+          <select className="field-select" value={type} onChange={handleTypeChange}>
+              <option value="simple">Simple</option>
+          </select>
+          </div>
 
-          ))}
-        </div>
-      </div>
+          {/* Grid */}
+          <div className="field-group">
+            <div className="field-label">Grid</div>
+              <select
+                  className="field-select"
+                  value={grid}
+                  onChange={(e) => onUpdate("grid", e.target.value)}
+              >
+                  {grids.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                  ))}
+              </select>
+          </div>
 
-      {/* Theme */}
-      <div className="field-group">
-        <div className="field-label">Theme (optional)</div>
-        <div className="chip-grid">
-          {THEMES.map((theme) => (
-            <button
-              key={theme}
-              className={`chip ${themes.includes(theme) ? "active" : ""}`}
-              onClick={() => toggleTheme(theme)}
-            >
-              {theme}
+          {/* Difficulty */}
+          <div className="field-group">
+          <div className="field-label">Difficulty</div>
+          <div className="diff-row">
+              {diffs.map((d) => (
+              <button
+                  key={d}
+                  className={`diff-btn ${difficulty === d.toLowerCase() ? "active" : ""}`}
+                  onClick={() => onUpdate("difficulty", d.toLowerCase())}
+              >
+                  {d}
+              </button>
+
+                ))}
+              </div>
+            </div>
+
+            {/* Theme */}
+            <div className="field-group">
+              <div className="field-label">Theme</div>
+              <div className="chip-grid">
+                {THEMES.map((theme) => (
+                  <button
+                    key={theme}
+                    className={`chip ${themes.includes(theme) ? "active" : ""}`}
+                    onClick={() => toggleTheme(theme)}
+                  >
+                    {theme}
+                  </button>
+                ))}
+                <button
+                  className={`chip ${themes.length === 0 ? "active" : ""}`}
+                  onClick={() => onUpdate("themes", [])}
+                >
+                  Random
+                </button>
+              </div>
+              {themes.length > 0 && (
+                <p className="theme-hint">
+                  {themes.length} theme{themes.length > 1 ? "s" : ""} selected
+                </p>
+              )}
+            </div>
+
+            {/* Actions */}
+            <button className="btn-generate" onClick={onGenerate}>
+              Generate crossword →
             </button>
-          ))}
-          <button
-            className={`chip ${themes.length === 0 ? "active" : ""}`}
-            onClick={() => onUpdate("themes", [])}
-          >
-            Random
-          </button>
-        </div>
-        {themes.length > 0 && (
-          <p className="theme-hint">
-            {themes.length} theme{themes.length > 1 ? "s" : ""} selected
-          </p>
+            <button className="btn-reset" onClick={onReset}>
+              Reset
+            </button>
+
+          </div>
         )}
       </div>
-
-      {/* Actions */}
-      <button className="btn-generate" onClick={onGenerate}>
-        Generate crossword →
-      </button>
-      <button className="btn-reset" onClick={onReset}>
-        Reset
-      </button>
     </>
   );}

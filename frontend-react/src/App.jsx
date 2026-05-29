@@ -43,19 +43,19 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <TopBar sidebarOpen={sidebarOpen} onToggle={() => setSidebarOpen((o) => !o)} />
+      <TopBar/>
 
       <div className="app-body">
-        {sidebarOpen && (
-          <aside className="sidebar">
-            <Sidebar
-              settings={settings}
-              onUpdate={updateSetting}
-              onGenerate={handleGenerate}
-              onReset={handleReset}
-            />
-          </aside>
-        )}
+        <aside className={`sidebar ${sidebarOpen ? "sidebar--open" : "sidebar--closed"}`}>
+          <Sidebar
+            settings={settings}
+            onUpdate={updateSetting}
+            onGenerate={handleGenerate}
+            onReset={handleReset}
+            sidebarOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen((o) => !o)}
+          />
+        </aside>
 
         <main className="main-area">
           <CrosswordGrid settings={settings} generated={generated} />
