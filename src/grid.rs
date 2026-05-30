@@ -25,7 +25,7 @@ impl GenericGrid {
 
 impl Grid for GenericGrid {
     fn initialize(_width: u32, _height: u32) -> Self {
-        panic!("Use GenericGrid::initialize(grid_type, width, height) instead")
+        panic!("Use GenericGrid::initialize(grid_type, width, height) instead.")
     }
 
     fn construct(&mut self) -> () {

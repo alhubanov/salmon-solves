@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::grid_scandi::ScandiGrid;
 use crate::grid::Grid;
+use crate::grid::GenericGrid;
 
 mod grid;
 mod grid_scandi;
@@ -9,6 +10,7 @@ mod grid_simple;
 mod terminal_input_utilities;
 mod ui_input_utilities;
 
+// Access point if using terminal
 pub fn run() -> () {
     let mut input = String::new();
 
@@ -30,13 +32,14 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32) 
     grid.construct();
 
     return grid;
-} 
+}
 
+// Access point if using frontend
 #[wasm_bindgen]
 pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Result<JsValue, serde_wasm_bindgen::Error> {
     let settings: ui_input_utilities::UserSettings = serde_wasm_bindgen::from_value(settings)?;
 
-    let mut grid = grid::GenericGrid::initialize(settings.get_grid_type(), width, height);
+    let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
     grid.construct();
 
     return serde_wasm_bindgen::to_value(&grid);
