@@ -3,6 +3,11 @@ use std::{collections::BTreeSet};
 use wasm_bindgen::prelude::*;
 use rand::prelude::*;
 
+#[cfg(test)]
+mod unit_tests;
+#[cfg(test)]
+mod test_helpers;
+
 mod clue;
 mod letter;
 mod gridcell;
@@ -97,22 +102,8 @@ impl ScandiGrid {
         {
             let current_density = if self.num_cells_accessed > 0 { self.clues_placed as f32 / self.num_cells_accessed as f32 } else { 0.0 };
             let deficit_rate = (self.target_clue_density - current_density) * 3.0;
+
             let mut clue_probability = (self.target_clue_density + deficit_rate).clamp(0.0, 1.0);
-
-            // let pressure_for_min = if current_word_len < self.minimum_word_length {
-            //     -0.10 * (self.minimum_word_length - current_word_len) as f32
-            // } else {
-            //     0.0
-            // };
-
-            // let pressure_for_max = if current_word_len > self.maximum_word_length {
-            //     0.10 * (current_word_len - self.maximum_word_length) as f32
-            // } else {
-            //     0.0
-            // };
-
-            // let noise: f32 = rng.random_range(-0.03..0.03);
-
             clue_probability = clue_probability.clamp(0.00, 1.0);
 
             let random_num :f32 = rng.random();
@@ -139,39 +130,6 @@ impl ScandiGrid {
             panic!("Reached point of assigning state with no available possibilities.")
         }
     }
-
-    // fn current_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> u32 {
-    //     let mut slot_count = 0;
-    //     let mut curr_vertical_idx = vertical_idx;
-    //     let mut curr_horizontal_idx = horizontal_idx;
-
-    //     let vertical_word_len = loop {
-    //         if self.layout[curr_vertical_idx as usize][horizontal_idx as usize].is_clue() {
-    //             break slot_count;
-    //         } else if curr_vertical_idx == 0 {
-    //             slot_count += 1;
-    //             break slot_count;
-    //         }
-
-    //         slot_count += 1;
-    //         curr_vertical_idx -= 1;
-    //     };
-
-    //     slot_count = 0;
-    //     let horizontal_word_len = loop {
-    //         if self.layout[vertical_idx as usize][curr_horizontal_idx as usize].is_clue() {
-    //             break slot_count;
-    //         } else if curr_horizontal_idx == 0 {
-    //             slot_count += 1;
-    //             break slot_count;
-    //         }
-
-    //         slot_count += 1;
-    //         curr_horizontal_idx -= 1;
-    //     };
-
-    //     return max(vertical_word_len, horizontal_word_len);
-    // }
 
     fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: BTreeSet<PossibleCellState>) -> BTreeSet<PossibleCellState> {
         curr_cell.assign_letter_state();

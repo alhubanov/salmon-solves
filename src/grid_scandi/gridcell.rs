@@ -19,9 +19,9 @@ pub enum PossibleCellState {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct GridCell {
-    cell: Option<CellType>,
-    assigned_cell_states: BTreeSet<PossibleCellState>,
-    possible_remaining_cell_states: BTreeSet<PossibleCellState>
+    pub cell: Option<CellType>,
+    pub assigned_cell_states: BTreeSet<PossibleCellState>,
+    pub possible_remaining_cell_states: BTreeSet<PossibleCellState>
 }
 
 impl GridCell {
