@@ -11,7 +11,6 @@ mod test_helpers;
 
 mod gridcell;
 use gridcell::{GridCell, CellState, CrossingState};
-
 use crate::grid::Grid;
 
 static WORDS: &str = include_str!("../word_files/common_english_words_long.txt");
