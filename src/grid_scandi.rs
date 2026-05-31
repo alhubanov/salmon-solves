@@ -16,6 +16,12 @@ use gridcell::GridCell;
 use crate::grid_scandi::{clue::SlotDirection, gridcell::PossibleCellState};
 use crate::grid::Grid;
 
+mod constants {
+    pub const TARGET_CLUE_DENSITY : f32                        = 0.22;
+    pub const THRESHOLD_PROBABILITY_FOR_SECOND_CLUE_STATE: f32 = 0.6;
+    pub const _MAXIMUM_WORD_LENGTH : u32                       = 10; // unused currently
+}
+
 pub enum LayoutError {
     // NoPossibleDomain,
     // LowClueDensity,
@@ -31,11 +37,8 @@ pub struct ScandiGrid {
     height: u32,
     layout: Vec<Vec<GridCell>>,
     placed_words: BTreeSet<String>,
-    target_clue_density: f32,
     clues_placed: u32,
-    num_cells_accessed: u32,
-    minimum_word_length: u32,
-    maximum_word_length: u32
+    num_cells_accessed: u32
 }
 
 impl Grid for ScandiGrid {
@@ -54,14 +57,10 @@ impl Grid for ScandiGrid {
 
         let placed_words = BTreeSet::new();
         
-        let target_clue_density = 0.22;
         let num_cells_accessed = 0;
         let clues_placed = 0;
 
-        let minimum_word_length = 2;
-        let maximum_word_length = 10;
-
-        Self { width, height, layout, placed_words, target_clue_density, clues_placed, num_cells_accessed, minimum_word_length, maximum_word_length }
+        Self { width, height, layout, placed_words, clues_placed, num_cells_accessed }
     }
 
     fn construct(&mut self) -> () {
@@ -102,9 +101,9 @@ impl ScandiGrid {
         if curr_cell.can_still_be_clue() && curr_cell.can_still_be_letter() 
         {
             let current_density = if self.num_cells_accessed > 0 { self.clues_placed as f32 / self.num_cells_accessed as f32 } else { 0.0 };
-            let deficit_rate = (self.target_clue_density - current_density) * 3.0;
+            let deficit_rate = (constants::TARGET_CLUE_DENSITY - current_density) * 3.0;
 
-            let mut clue_probability = (self.target_clue_density + deficit_rate).clamp(0.0, 1.0);
+            let mut clue_probability = (constants::TARGET_CLUE_DENSITY + deficit_rate).clamp(0.0, 1.0);
             clue_probability = clue_probability.clamp(0.00, 1.0);
 
             let random_num :f32 = rng.random();
@@ -149,7 +148,7 @@ impl ScandiGrid {
         let mut num_assigned_states = 0;
         let mut random_number: f32 = 0.0; // starts at 0.0 so at least one state is assigned
 
-        while num_assigned_states < 2 && random_number < 0.6 {
+        while num_assigned_states < 2 && random_number < constants::THRESHOLD_PROBABILITY_FOR_SECOND_CLUE_STATE {
             match curr_cell.assign_clue_state_randomly(&mut rng, &assigned_states) {
                 Some(state) => {
                     assigned_states.insert(state);
