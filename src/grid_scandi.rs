@@ -54,7 +54,7 @@ impl Grid for ScandiGrid {
 
         let placed_words = BTreeSet::new();
         
-        let target_clue_density = 0.20;
+        let target_clue_density = 0.22;
         let num_cells_accessed = 0;
         let clues_placed = 0;
 
@@ -69,7 +69,7 @@ impl Grid for ScandiGrid {
             for horizontal_idx in 0..self.width {
 
                 let assigned_cell_states = self.set_cell_state_from_remaining_possibilities(vertical_idx, horizontal_idx);
-                if let Err(_) = self.check_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
+                if let Err(_) = self.restrict_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
                     // backtrack
                 }
 
@@ -93,8 +93,9 @@ impl ScandiGrid {
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
 
-        let curr_cell = &mut self.layout[vertical_idx as usize][horizontal_idx as usize];
+        self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
 
+        let curr_cell = &mut self.layout[vertical_idx as usize][horizontal_idx as usize];
         let mut rng = rand::rng();
         let assigned_states : BTreeSet<PossibleCellState> = BTreeSet::new();
 
@@ -110,16 +111,22 @@ impl ScandiGrid {
             if random_num as f32 <= clue_probability 
             {
                 self.clues_placed += 1;
-                return Self::assign_clue(curr_cell, rng, assigned_states);
+                return Self::assign_clue_states(curr_cell, rng, assigned_states, false);
             } 
             else 
             {
                 return Self::assign_letter(curr_cell, assigned_states); 
             }
         } 
+        else if (horizontal_idx == 0 || vertical_idx == 0) && curr_cell.can_still_be_clue() 
+        {
+            // self.clues_placed += 1;
+            return Self::assign_clue_states(curr_cell, rng, assigned_states, true);
+        }
         else if curr_cell.can_still_be_clue() 
         {
-            return Self::assign_clue(curr_cell, rng, assigned_states);
+            self.clues_placed += 1;
+            return Self::assign_clue_states(curr_cell, rng, assigned_states, false);
         } 
         else if curr_cell.can_still_be_letter() 
         {
@@ -137,22 +144,42 @@ impl ScandiGrid {
         return assigned_states;
     }
 
-    fn assign_clue(curr_cell: &mut GridCell, mut rng: ThreadRng, mut assigned_states: BTreeSet<PossibleCellState>) -> BTreeSet<PossibleCellState> {
+    fn assign_clue_states(curr_cell: &mut GridCell, mut rng: ThreadRng, mut assigned_states: BTreeSet<PossibleCellState>, randomize: bool) -> BTreeSet<PossibleCellState> {
+
         let mut num_assigned_states = 0;
-        while num_assigned_states < 2 {
+        let mut random_number: f32 = 0.0; // starts at 0.0 so at least one state is assigned
+
+        while num_assigned_states < 2 && random_number < 0.6 {
             match curr_cell.assign_clue_state_randomly(&mut rng, &assigned_states) {
                 Some(state) => {
                     assigned_states.insert(state);
                     num_assigned_states += 1;
-                },
-                None => break
+                    random_number = if randomize { rng.random() } else { 0.0 };
+                }
+                None => break,
             }
         }
 
-        return assigned_states;
+        assigned_states
     }
 
-    fn check_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &BTreeSet<PossibleCellState>) -> Result<(), LayoutError> {
+    fn apply_first_row_column_restrictions(&mut self, vertical_idx: u32, horizontal_idx: u32) -> () {
+
+        if vertical_idx == 0 && horizontal_idx > 0 && self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].is_letter() {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        }
+        else if vertical_idx == 0 && horizontal_idx > 0 && !self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].is_clue_of_type(SlotDirection::DownOnRightSide) {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        }
+        else if horizontal_idx == 0 && vertical_idx > 0 && self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].is_letter() {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        }
+        else if horizontal_idx == 0 && vertical_idx > 0 && !self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].is_clue_of_type(SlotDirection::RightOnBottomSide) {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        }
+    }
+
+    fn restrict_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &BTreeSet<PossibleCellState>) -> Result<(), LayoutError> {
 
         if assigned_cell_states.iter().all(|state| matches!(state, PossibleCellState::Clue(_))) {
 

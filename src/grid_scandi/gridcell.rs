@@ -33,14 +33,14 @@ impl GridCell {
             cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
             cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
         } else if row_idx == 0 {
-            // cell_states.insert(PossibleCellState::Letter);
+            cell_states.insert(PossibleCellState::Letter);
             cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
 
             if col_idx < width - 1 {
                 cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide));
             } 
         } else if col_idx == 0 {
-            // cell_states.insert(PossibleCellState::Letter);
+            cell_states.insert(PossibleCellState::Letter);
             cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
 
             if row_idx < height - 1 {
@@ -144,11 +144,11 @@ impl GridCell {
             .any(|state| matches!(state, PossibleCellState::Clue(_)))
     }
 
-    // pub fn is_clue(&self) -> bool {
-    //     self.assigned_cell_states
-    //         .iter()
-    //         .any(|state| matches!(state, PossibleCellState::Clue(_)))
-    // }
+    pub fn is_letter(&self) -> bool {
+        self.assigned_cell_states
+            .iter()
+            .any(|state| matches!(state, PossibleCellState::Letter))
+    }
 
     pub fn is_clue_of_type(&self, clue_kind: SlotDirection) -> bool {
         return self.assigned_cell_states.contains(&PossibleCellState::Clue(clue_kind));
