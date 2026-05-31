@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use std::cmp::max;
 use std::{collections::BTreeSet};
 use wasm_bindgen::prelude::*;
 use rand::prelude::*;
@@ -17,9 +18,12 @@ use crate::grid_scandi::{clue::SlotDirection, gridcell::PossibleCellState};
 use crate::grid::Grid;
 
 mod constants {
-    pub const TARGET_CLUE_DENSITY : f32                        = 0.22;
+    pub const TARGET_CLUE_DENSITY : f32                        = 0.25;
     pub const THRESHOLD_PROBABILITY_FOR_SECOND_CLUE_STATE: f32 = 0.6;
-    pub const _MAXIMUM_WORD_LENGTH : u32                       = 10; // unused currently
+    pub const _MAXIMUM_WORD_LENGTH : i32                       = 10; // unused currently
+    pub const MEDIAN_WORD_LENGTH : i32                         = 6; 
+    pub const PER_LETTER_LENGTH_PRESSURE : f32                 = 0.08;
+    pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
 }
 
 pub enum LayoutError {
@@ -71,8 +75,6 @@ impl Grid for ScandiGrid {
                 if let Err(_) = self.restrict_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
                     // backtrack
                 }
-
-                self.num_cells_accessed += 1;
             }
         }
     }
@@ -85,6 +87,8 @@ impl Grid for ScandiGrid {
 
             println!()
         }
+
+        println!("Clues placed roughly: {}", self.clues_placed + ((self.width + self.height)/ 2))
     }
 }
 
@@ -93,6 +97,7 @@ impl ScandiGrid {
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
 
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
+        let current_word_len : i32 = self.word_len_up_to_curr_cell(vertical_idx, horizontal_idx);
 
         let curr_cell = &mut self.layout[vertical_idx as usize][horizontal_idx as usize];
         let mut rng = rand::rng();
@@ -100,20 +105,32 @@ impl ScandiGrid {
 
         if curr_cell.can_still_be_clue() && curr_cell.can_still_be_letter() 
         {
+            // the ratio betwee placed clues and processed cells, not considering the first row and first column
             let current_density = if self.num_cells_accessed > 0 { self.clues_placed as f32 / self.num_cells_accessed as f32 } else { 0.0 };
-            let deficit_rate = (constants::TARGET_CLUE_DENSITY - current_density) * 3.0;
 
-            let mut clue_probability = (constants::TARGET_CLUE_DENSITY + deficit_rate).clamp(0.0, 1.0);
+            // force towards a clue if falling behind target clue density 
+            let deficit_rate = if constants::TARGET_CLUE_DENSITY > current_density { (constants::TARGET_CLUE_DENSITY - current_density) * 2.0 } else { 0.0 };
+            println!("Deficit rate for {}, {}: {}", vertical_idx, horizontal_idx, deficit_rate);
+
+            // force towards a clue or a letter depending on current length
+            let length_pressure : f32 = (current_word_len - constants::MEDIAN_WORD_LENGTH) as f32 * constants::PER_LETTER_LENGTH_PRESSURE;
+            println!("Length pressure for {}, {}: {}", vertical_idx, horizontal_idx, length_pressure);
+
+            let mut clue_probability = (constants::TARGET_CLUE_DENSITY + deficit_rate + length_pressure).clamp(0.0, 1.0);
+            println!("Clue probability for {}, {}: {}", vertical_idx, horizontal_idx, clue_probability);
+
             clue_probability = clue_probability.clamp(0.00, 1.0);
 
             let random_num :f32 = rng.random();
             if random_num as f32 <= clue_probability 
             {
                 self.clues_placed += 1;
+                self.num_cells_accessed += 1;
                 return Self::assign_clue_states(curr_cell, rng, assigned_states, false);
             } 
             else 
             {
+                self.num_cells_accessed += 1;
                 return Self::assign_letter(curr_cell, assigned_states); 
             }
         } 
@@ -124,17 +141,52 @@ impl ScandiGrid {
         }
         else if curr_cell.can_still_be_clue() 
         {
+            self.num_cells_accessed += 1;
             self.clues_placed += 1;
             return Self::assign_clue_states(curr_cell, rng, assigned_states, false);
         } 
         else if curr_cell.can_still_be_letter() 
         {
+            self.num_cells_accessed += 1;
             return Self::assign_letter(curr_cell, assigned_states); 
         } 
         else 
         {
             panic!("Reached point of assigning state with no available possibilities.")
         }
+    }
+
+    fn word_len_up_to_curr_cell(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 {
+        let mut slot_count = -1;
+        let mut curr_vertical_idx = vertical_idx;
+        let mut curr_horizontal_idx = horizontal_idx;
+
+        let vertical_word_len = loop {
+            if self.layout[curr_vertical_idx as usize][horizontal_idx as usize].is_clue() {
+                break slot_count;
+            } else if curr_vertical_idx == 0 {
+                slot_count += 1;
+                break slot_count;
+            }
+
+            slot_count += 1;
+            curr_vertical_idx -= 1;
+        };
+
+        slot_count = -1;
+        let horizontal_word_len = loop {
+            if self.layout[vertical_idx as usize][curr_horizontal_idx as usize].is_clue() {
+                break slot_count;
+            } else if curr_horizontal_idx == 0 {
+                slot_count += 1;
+                break slot_count;
+            }
+
+            slot_count += 1;
+            curr_horizontal_idx -= 1;
+        };
+
+        return max(vertical_word_len, horizontal_word_len);
     }
 
     fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: BTreeSet<PossibleCellState>) -> BTreeSet<PossibleCellState> {
