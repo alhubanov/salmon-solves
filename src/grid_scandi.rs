@@ -377,7 +377,7 @@ impl ScandiGrid {
     }
 
     fn prevent_letter_on_the_right(&mut self, vertical_idx: u32, horizontal_idx: u32) -> () {
-        if horizontal_idx == self.height - 1 {
+        if horizontal_idx == self.width - 1 {
             return;
         }
 
