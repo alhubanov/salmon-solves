@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+use crate::grid::Crossword;
 use crate::grid_scandi::ScandiGrid;
 use crate::grid::Grid;
 use crate::grid::GenericGrid;
@@ -31,16 +32,16 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32) 
     let mut grid = T::initialize(width, height);
     grid.construct();
 
-    return grid;
+    grid
 }
 
 // Access point if using frontend
 #[wasm_bindgen]
-pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Result<JsValue, serde_wasm_bindgen::Error> {
+pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Result<Crossword, JsValue> {
     let settings: ui_input_utilities::UserSettings = serde_wasm_bindgen::from_value(settings)?;
 
     let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
     grid.construct();
 
-    return serde_wasm_bindgen::to_value(&grid);
+    return Ok(Crossword::new(grid));
 }   

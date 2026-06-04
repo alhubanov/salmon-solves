@@ -1,5 +1,6 @@
+use wasm_bindgen::prelude::*;
+
 use crate::{grid_scandi::ScandiGrid, grid_simple::SimpleGrid, ui_input_utilities::GridType};
-use serde::{Serialize, Deserialize};
 
 pub trait Grid {
     fn initialize(width: u32, height: u32) -> Self;
@@ -7,8 +8,6 @@ pub trait Grid {
     fn print(&self) -> ();
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum GenericGrid {
     Simple(SimpleGrid),
     Scandi(ScandiGrid)
@@ -40,5 +39,16 @@ impl Grid for GenericGrid {
             Self::Scandi(scandi_grid) => scandi_grid.print(),
             Self::Simple(simple_grid) => simple_grid.print()
         }
+    }
+}
+
+#[wasm_bindgen]
+pub struct Crossword {
+    constructed_grid: GenericGrid
+}
+
+impl Crossword {
+    pub fn new(constructed_grid: GenericGrid) -> Self {
+        Self { constructed_grid }
     }
 }

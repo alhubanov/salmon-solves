@@ -1,4 +1,3 @@
-use serde::{Serialize, Deserialize};
 use std::cmp::max;
 use std::{collections::BTreeSet};
 use wasm_bindgen::prelude::*;
@@ -34,13 +33,11 @@ pub enum LayoutError {
     CannotEnsureAClearWordSlot
 }
 
-#[derive(Serialize, Deserialize)]
 #[wasm_bindgen(js_name = GridScandi)]
 pub struct ScandiGrid {
     width: u32,
     height: u32,
     layout: Vec<Vec<GridCell>>,
-    placed_words: BTreeSet<String>,
     clues_placed: u32,
     num_cells_accessed: u32
 }
@@ -58,13 +55,11 @@ impl Grid for ScandiGrid {
                 layout[row_idx as usize].push(cell);
             }
         }
-
-        let placed_words = BTreeSet::new();
         
         let num_cells_accessed = 0;
         let clues_placed = 0;
 
-        Self { width, height, layout, placed_words, clues_placed, num_cells_accessed }
+        Self { width, height, layout, clues_placed, num_cells_accessed }
     }
 
     fn construct(&mut self) -> () {
@@ -87,11 +82,10 @@ impl Grid for ScandiGrid {
 
             println!()
         }
-
-        println!("Clues placed roughly: {}", self.clues_placed + ((self.width + self.height)/ 2))
     }
 }
 
+#[wasm_bindgen]
 impl ScandiGrid {
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
@@ -110,15 +104,11 @@ impl ScandiGrid {
 
             // force towards a clue if falling behind target clue density 
             let deficit_rate = if constants::TARGET_CLUE_DENSITY > current_density { (constants::TARGET_CLUE_DENSITY - current_density) * 2.0 } else { 0.0 };
-            println!("Deficit rate for {}, {}: {}", vertical_idx, horizontal_idx, deficit_rate);
 
             // force towards a clue or a letter depending on current length
             let length_pressure : f32 = (current_word_len - constants::MEDIAN_WORD_LENGTH) as f32 * constants::PER_LETTER_LENGTH_PRESSURE;
-            println!("Length pressure for {}, {}: {}", vertical_idx, horizontal_idx, length_pressure);
 
             let mut clue_probability = (constants::TARGET_CLUE_DENSITY + deficit_rate + length_pressure).clamp(0.0, 1.0);
-            println!("Clue probability for {}, {}: {}", vertical_idx, horizontal_idx, clue_probability);
-
             clue_probability = clue_probability.clamp(0.00, 1.0);
 
             let random_num :f32 = rng.random();
