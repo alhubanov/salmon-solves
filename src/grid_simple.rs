@@ -1,7 +1,5 @@
 use num::Integer;
 use std::collections::{HashSet};
-use serde::{Serialize, Deserialize};
-use wasm_bindgen::prelude::*;
 use rand::{self, seq::SliceRandom};
 
 #[cfg(test)]
@@ -33,8 +31,6 @@ enum WordDirection {
     Down
 }
 
-#[derive(Serialize, Deserialize)]
-#[wasm_bindgen(js_name = GridSimple)]
 pub struct SimpleGrid {
     width: u32,
     height: u32,

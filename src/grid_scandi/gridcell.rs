@@ -1,23 +1,23 @@
-use serde::{Serialize, Deserialize};
 use std::collections::{BTreeSet};
 use rand::prelude::*;
 
-use super::clue::{Clue, SlotDirection};
+use super::clue::Clue;
+use super::slot::SlotDirection;
 use super::letter::Letter;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum CellType {
     Clue(Clue),
     Letter(Letter)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum PossibleCellState {
     Letter,
     Clue(SlotDirection)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct GridCell {
     pub cell: Option<CellType>,
     pub assigned_cell_states: BTreeSet<PossibleCellState>,

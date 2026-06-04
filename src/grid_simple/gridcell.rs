@@ -1,20 +1,17 @@
-use serde::{Serialize, Deserialize};
-
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Debug)]
 pub enum CellState {
     Filled,
     NotFilled,
     TentativelyFilled
 }
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq)]
 pub enum CrossingState {
     Is,
     IsTentatively,
     IsNot
 }
 
-#[derive(Serialize, Deserialize)]
 pub struct GridCell {
     pub cell_value: char,
     pub cell_state: CellState,

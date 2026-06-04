@@ -1,6 +1,5 @@
 use std::cmp::max;
 use std::{collections::BTreeSet};
-use wasm_bindgen::prelude::*;
 use rand::prelude::*;
 
 #[cfg(test)]
@@ -11,9 +10,12 @@ mod test_helpers;
 mod clue;
 mod letter;
 mod gridcell;
+mod slot;
 
+use slot::Slot;
+use slot::SlotDirection;
 use gridcell::GridCell;
-use crate::grid_scandi::{clue::SlotDirection, gridcell::PossibleCellState};
+use crate::grid_scandi::gridcell::PossibleCellState;
 use crate::grid::Grid;
 
 mod constants {
@@ -33,13 +35,13 @@ pub enum LayoutError {
     CannotEnsureAClearWordSlot
 }
 
-#[wasm_bindgen(js_name = GridScandi)]
 pub struct ScandiGrid {
     width: u32,
     height: u32,
     layout: Vec<Vec<GridCell>>,
     clues_placed: u32,
-    num_cells_accessed: u32
+    num_cells_accessed: u32,
+    word_slots: Vec<Slot<'static>>
 }
 
 impl Grid for ScandiGrid {
@@ -59,7 +61,9 @@ impl Grid for ScandiGrid {
         let num_cells_accessed = 0;
         let clues_placed = 0;
 
-        Self { width, height, layout, clues_placed, num_cells_accessed }
+        let word_slots = Vec::new();
+
+        Self { width, height, layout, clues_placed, num_cells_accessed, word_slots }
     }
 
     fn construct(&mut self) -> () {
@@ -85,7 +89,6 @@ impl Grid for ScandiGrid {
     }
 }
 
-#[wasm_bindgen]
 impl ScandiGrid {
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
