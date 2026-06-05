@@ -1,6 +1,9 @@
 use std::cmp::max;
-use std::{collections::BTreeSet};
+use std::{collections::{BTreeSet, HashMap}};
 use rand::prelude::*;
+
+use std::rc::Rc;
+use std::cell::RefCell;
 
 #[cfg(test)]
 mod unit_tests;
@@ -17,6 +20,8 @@ use slot::SlotDirection;
 use gridcell::GridCell;
 use crate::grid_scandi::gridcell::PossibleCellState;
 use crate::grid::Grid;
+
+static WORDS: &str = include_str!("../word_files/common_english_words.txt");
 
 mod constants {
     pub const TARGET_CLUE_DENSITY : f32                        = 0.25;
@@ -41,7 +46,7 @@ pub struct ScandiGrid {
     layout: Vec<Vec<GridCell>>,
     clues_placed: u32,
     num_cells_accessed: u32,
-    word_slots: Vec<Slot<'static>>
+    word_slots: Vec<Slot>
 }
 
 impl Grid for ScandiGrid {
@@ -67,12 +72,62 @@ impl Grid for ScandiGrid {
     }
 
     fn construct(&mut self) -> () {
+
+        let mut word_collections_per_length : HashMap<u32, Rc<RefCell<BTreeSet<String>>>> = HashMap::new();
+
+        let words_vec : Vec<&str> = WORDS.lines().collect();
+        for word in words_vec {
+            word_collections_per_length
+                .entry(word.len() as u32)
+                .or_default()
+                .borrow_mut()
+                .insert(word.to_string());
+        }
+
         for vertical_idx in 0..self.height {
             for horizontal_idx in 0..self.width {
 
                 let assigned_cell_states = self.set_cell_state_from_remaining_possibilities(vertical_idx, horizontal_idx);
                 if let Err(_) = self.restrict_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
                     // backtrack
+                }
+
+                if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(_))) {
+                    let (word_length_from_vertical, slot_direction_for_vertical) = self.find_vertical_word_len(vertical_idx, horizontal_idx);
+                    let (word_length_from_horizontal, slot_direction_for_horizontal) = self.find_horizontal_word_len(vertical_idx, horizontal_idx);
+
+                    if !word_collections_per_length.contains_key(&(word_length_from_vertical as u32)) {
+                        // TODO: backtrack here instead of panicking
+                        panic!("Cannot fill slot at all!");
+                    }
+
+                    let available_words_for_vertical_slot = Rc::clone(&word_collections_per_length[&(word_length_from_vertical as u32)]);
+
+                    if !word_collections_per_length.contains_key(&(word_length_from_horizontal as u32)) {
+                        // TODO: backtrack here instead of panicking
+                        panic!("Cannot fill slot at all.");
+                    }
+
+                    let available_words_for_horizontal_slot = Rc::clone(&word_collections_per_length[&(word_length_from_horizontal as u32)]);
+
+                    let vertical_slot = match slot_direction_for_vertical {
+                        SlotDirection::DownOnRightSide => 
+                            Slot::new(Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32, horizontal_idx - 1, slot_direction_for_vertical),
+                        SlotDirection::Down => 
+                            Slot::new(Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32 - 1, horizontal_idx, slot_direction_for_vertical),
+                        _ => panic!("Impossible clue cell placement.")
+                    };
+
+                    let horizontal_slot = match slot_direction_for_horizontal {
+                        SlotDirection::RightOnBottomSide => 
+                            Slot::new(Rc::clone(&available_words_for_horizontal_slot), vertical_idx - 1, horizontal_idx - word_length_from_horizontal as u32, slot_direction_for_horizontal),
+                        SlotDirection::Right => 
+                            Slot::new(Rc::clone(&available_words_for_horizontal_slot), vertical_idx, horizontal_idx - word_length_from_horizontal as u32 - 1, slot_direction_for_horizontal),
+                        _ => panic!("Impossible clue cell placement.")
+                    };
+
+                    self.word_slots.push(vertical_slot);
+                    self.word_slots.push(horizontal_slot);
                 }
             }
         }
@@ -149,35 +204,49 @@ impl ScandiGrid {
         }
     }
 
-    fn word_len_up_to_curr_cell(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 {
+    fn find_vertical_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> (i32, SlotDirection) {
         let mut slot_count = -1;
         let mut curr_vertical_idx = vertical_idx;
-        let mut curr_horizontal_idx = horizontal_idx;
 
-        let vertical_word_len = loop {
+        let (vertical_word_len, slot_direction) = loop {
             if self.layout[curr_vertical_idx as usize][horizontal_idx as usize].is_clue() {
-                break slot_count;
+                break (slot_count, SlotDirection::Down);
             } else if curr_vertical_idx == 0 {
                 slot_count += 1;
-                break slot_count;
+                break (slot_count, SlotDirection::DownOnRightSide);
             }
 
             slot_count += 1;
             curr_vertical_idx -= 1;
         };
 
-        slot_count = -1;
-        let horizontal_word_len = loop {
+        return (vertical_word_len, slot_direction);
+    }
+
+    fn find_horizontal_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> (i32, SlotDirection) {
+        let mut slot_count = -1;
+        let mut curr_horizontal_idx = horizontal_idx;
+
+        let (horizontal_word_len, slot_direction) = loop {
             if self.layout[vertical_idx as usize][curr_horizontal_idx as usize].is_clue() {
-                break slot_count;
+                break (slot_count, SlotDirection::Right);
             } else if curr_horizontal_idx == 0 {
                 slot_count += 1;
-                break slot_count;
+                break (slot_count, SlotDirection::RightOnBottomSide);
             }
 
             slot_count += 1;
             curr_horizontal_idx -= 1;
         };
+
+        return (horizontal_word_len, slot_direction);
+    }
+    
+
+    fn word_len_up_to_curr_cell(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 {
+
+        let (vertical_word_len, _) = self.find_vertical_word_len(vertical_idx, horizontal_idx);
+        let (horizontal_word_len, _) = self.find_horizontal_word_len(vertical_idx, horizontal_idx);
 
         return max(vertical_word_len, horizontal_word_len);
     }

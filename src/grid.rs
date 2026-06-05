@@ -22,7 +22,7 @@ impl GenericGrid {
     }
 }
 
-impl Grid for GenericGrid {
+impl Grid for GenericGrid  {
     fn initialize(_width: u32, _height: u32) -> Self {
         panic!("Use GenericGrid::initialize(grid_type, width, height) instead.")
     }
@@ -44,11 +44,11 @@ impl Grid for GenericGrid {
 
 #[wasm_bindgen]
 pub struct Crossword {
-    constructed_grid: GenericGrid
+    _constructed_grid: GenericGrid
 }
 
 impl Crossword {
-    pub fn new(constructed_grid: GenericGrid) -> Self {
-        Self { constructed_grid }
+    pub fn new(_constructed_grid: GenericGrid) -> Self {
+        Self { _constructed_grid }
     }
 }
