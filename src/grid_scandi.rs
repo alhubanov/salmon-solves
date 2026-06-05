@@ -112,17 +112,17 @@ impl Grid for ScandiGrid {
 
                     let vertical_slot = match slot_direction_for_vertical {
                         SlotDirection::DownOnRightSide => 
-                            Slot::new(Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32, horizontal_idx - 1, slot_direction_for_vertical),
+                            Slot::new(word_length_from_vertical as u32, Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32, horizontal_idx - 1, slot_direction_for_vertical),
                         SlotDirection::Down => 
-                            Slot::new(Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32 - 1, horizontal_idx, slot_direction_for_vertical),
+                            Slot::new(word_length_from_vertical as u32, Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32 - 1, horizontal_idx, slot_direction_for_vertical),
                         _ => panic!("Impossible clue cell placement.")
                     };
 
                     let horizontal_slot = match slot_direction_for_horizontal {
                         SlotDirection::RightOnBottomSide => 
-                            Slot::new(Rc::clone(&available_words_for_horizontal_slot), vertical_idx - 1, horizontal_idx - word_length_from_horizontal as u32, slot_direction_for_horizontal),
+                            Slot::new(word_length_from_horizontal as u32, Rc::clone(&available_words_for_horizontal_slot), vertical_idx - 1, horizontal_idx - word_length_from_horizontal as u32, slot_direction_for_horizontal),
                         SlotDirection::Right => 
-                            Slot::new(Rc::clone(&available_words_for_horizontal_slot), vertical_idx, horizontal_idx - word_length_from_horizontal as u32 - 1, slot_direction_for_horizontal),
+                            Slot::new(word_length_from_horizontal as u32, Rc::clone(&available_words_for_horizontal_slot), vertical_idx, horizontal_idx - word_length_from_horizontal as u32 - 1, slot_direction_for_horizontal),
                         _ => panic!("Impossible clue cell placement.")
                     };
 
@@ -131,6 +131,8 @@ impl Grid for ScandiGrid {
                 }
             }
         }
+
+
     }
 
     fn print(&self) -> () {
