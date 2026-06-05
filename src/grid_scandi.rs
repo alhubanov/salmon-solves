@@ -43,7 +43,7 @@ pub enum LayoutError {
 pub struct ScandiGrid {
     width: u32,
     height: u32,
-    layout: Vec<Vec<GridCell>>,
+    layout: Vec<Vec<Rc<RefCell<GridCell>>>>,
     clues_placed: u32,
     num_cells_accessed: u32,
     word_slots: Vec<Slot>
@@ -51,7 +51,7 @@ pub struct ScandiGrid {
 
 impl Grid for ScandiGrid {
     fn initialize(width: u32, height: u32) -> Self {
-        let mut layout : Vec<Vec<GridCell>> = Vec::new();
+        let mut layout : Vec<Vec<Rc<RefCell<GridCell>>>> = Vec::new();
 
         for row_idx in 0..height {
             layout.push(Vec::new());
@@ -59,7 +59,7 @@ impl Grid for ScandiGrid {
             for col_idx in 0..width {
                 let cell = GridCell::build(row_idx, col_idx, width, height);
 
-                layout[row_idx as usize].push(cell);
+                layout[row_idx as usize].push(Rc::new(RefCell::new(cell)));
             }
         }
         
@@ -93,8 +93,8 @@ impl Grid for ScandiGrid {
                 }
 
                 if assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(_))) {
-                    let (word_length_from_vertical, slot_direction_for_vertical) = self.find_vertical_word_len(vertical_idx, horizontal_idx);
-                    let (word_length_from_horizontal, slot_direction_for_horizontal) = self.find_horizontal_word_len(vertical_idx, horizontal_idx);
+                    let (word_length_from_vertical, slot_direction_for_vertical, vertical_slot_cells) = self.find_vertical_word_len(vertical_idx, horizontal_idx);
+                    let (word_length_from_horizontal, slot_direction_for_horizontal, horizontal_slot_cells) = self.find_horizontal_word_len(vertical_idx, horizontal_idx);
 
                     if !word_collections_per_length.contains_key(&(word_length_from_vertical as u32)) {
                         // TODO: backtrack here instead of panicking
@@ -112,17 +112,41 @@ impl Grid for ScandiGrid {
 
                     let vertical_slot = match slot_direction_for_vertical {
                         SlotDirection::DownOnRightSide => 
-                            Slot::new(word_length_from_vertical as u32, Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32, horizontal_idx - 1, slot_direction_for_vertical),
+                            Slot::new(
+                                word_length_from_vertical as u32, 
+                                Rc::clone(&available_words_for_vertical_slot), 
+                                Rc::clone(&(self.layout[(vertical_idx - word_length_from_vertical as u32) as usize][(horizontal_idx - 1) as usize])), 
+                                vertical_slot_cells, 
+                                slot_direction_for_vertical
+                            ),
                         SlotDirection::Down => 
-                            Slot::new(word_length_from_vertical as u32, Rc::clone(&available_words_for_vertical_slot), vertical_idx - word_length_from_vertical as u32 - 1, horizontal_idx, slot_direction_for_vertical),
+                            Slot::new(
+                                word_length_from_vertical as u32, 
+                                Rc::clone(&available_words_for_vertical_slot), 
+                                Rc::clone(&(self.layout[(vertical_idx - word_length_from_vertical as u32 - 1) as usize][horizontal_idx as usize])), 
+                                vertical_slot_cells, 
+                                slot_direction_for_vertical
+                            ),
                         _ => panic!("Impossible clue cell placement.")
                     };
 
                     let horizontal_slot = match slot_direction_for_horizontal {
                         SlotDirection::RightOnBottomSide => 
-                            Slot::new(word_length_from_horizontal as u32, Rc::clone(&available_words_for_horizontal_slot), vertical_idx - 1, horizontal_idx - word_length_from_horizontal as u32, slot_direction_for_horizontal),
+                            Slot::new(
+                                word_length_from_horizontal as u32, 
+                                Rc::clone(&available_words_for_horizontal_slot), 
+                                Rc::clone(&(self.layout[(vertical_idx - 1) as usize][(horizontal_idx - word_length_from_horizontal as u32) as usize])), 
+                                horizontal_slot_cells, 
+                                slot_direction_for_horizontal
+                            ),
                         SlotDirection::Right => 
-                            Slot::new(word_length_from_horizontal as u32, Rc::clone(&available_words_for_horizontal_slot), vertical_idx, horizontal_idx - word_length_from_horizontal as u32 - 1, slot_direction_for_horizontal),
+                            Slot::new(
+                                word_length_from_horizontal as u32, 
+                                Rc::clone(&available_words_for_horizontal_slot),
+                                Rc::clone(&(self.layout[vertical_idx as usize][(horizontal_idx - word_length_from_horizontal as u32 - 1) as usize])), 
+                                horizontal_slot_cells, 
+                                slot_direction_for_horizontal
+                            ),
                         _ => panic!("Impossible clue cell placement.")
                     };
 
@@ -132,13 +156,19 @@ impl Grid for ScandiGrid {
             }
         }
 
+        self.word_slots.sort_by(|slot1, slot2| slot1.get_available_word_set().len().cmp(&slot2.get_available_word_set().len()));
 
+        // for slot in &mut self.word_slots {
+
+        //     slot.select_word_randomly()
+
+        // }
     }
 
     fn print(&self) -> () {
         for vertical_idx in 0..self.height {
             for horizontal_idx in 0..self.width {
-                self.layout[vertical_idx as usize][horizontal_idx as usize].print();
+                self.layout[vertical_idx as usize][horizontal_idx as usize].borrow().print();
             }
 
             println!()
@@ -153,7 +183,7 @@ impl ScandiGrid {
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
         let current_word_len : i32 = self.word_len_up_to_curr_cell(vertical_idx, horizontal_idx);
 
-        let curr_cell = &mut self.layout[vertical_idx as usize][horizontal_idx as usize];
+        let mut curr_cell = self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut();
         let mut rng = rand::rng();
         let assigned_states : BTreeSet<PossibleCellState> = BTreeSet::new();
 
@@ -176,29 +206,29 @@ impl ScandiGrid {
             {
                 self.clues_placed += 1;
                 self.num_cells_accessed += 1;
-                return Self::assign_clue_states(curr_cell, rng, assigned_states, false);
+                return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, false);
             } 
             else 
             {
                 self.num_cells_accessed += 1;
-                return Self::assign_letter(curr_cell, assigned_states); 
+                return Self::assign_letter(&mut *curr_cell, assigned_states); 
             }
         } 
         else if (horizontal_idx == 0 || vertical_idx == 0) && curr_cell.can_still_be_clue() 
         {
             // self.clues_placed += 1;
-            return Self::assign_clue_states(curr_cell, rng, assigned_states, true);
+            return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, true);
         }
         else if curr_cell.can_still_be_clue() 
         {
             self.num_cells_accessed += 1;
             self.clues_placed += 1;
-            return Self::assign_clue_states(curr_cell, rng, assigned_states, false);
+            return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, false);
         } 
         else if curr_cell.can_still_be_letter() 
         {
             self.num_cells_accessed += 1;
-            return Self::assign_letter(curr_cell, assigned_states); 
+            return Self::assign_letter(&mut *curr_cell, assigned_states); 
         } 
         else 
         {
@@ -206,49 +236,61 @@ impl ScandiGrid {
         }
     }
 
-    fn find_vertical_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> (i32, SlotDirection) {
+    fn find_vertical_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> (i32, SlotDirection, Vec<Rc<RefCell<GridCell>>>) {
         let mut slot_count = -1;
         let mut curr_vertical_idx = vertical_idx;
 
+        let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
+
         let (vertical_word_len, slot_direction) = loop {
-            if self.layout[curr_vertical_idx as usize][horizontal_idx as usize].is_clue() {
+            if self.layout[curr_vertical_idx as usize][horizontal_idx as usize].borrow().is_clue() {
                 break (slot_count, SlotDirection::Down);
             } else if curr_vertical_idx == 0 {
                 slot_count += 1;
+                slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][horizontal_idx as usize]));
                 break (slot_count, SlotDirection::DownOnRightSide);
             }
 
             slot_count += 1;
+            slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][horizontal_idx as usize]));
             curr_vertical_idx -= 1;
         };
 
-        return (vertical_word_len, slot_direction);
+        slot_cells.reverse();
+
+        return (vertical_word_len, slot_direction, slot_cells);
     }
 
-    fn find_horizontal_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> (i32, SlotDirection) {
+    fn find_horizontal_word_len(&self, vertical_idx: u32, horizontal_idx: u32) -> (i32, SlotDirection, Vec<Rc<RefCell<GridCell>>>) {
         let mut slot_count = -1;
         let mut curr_horizontal_idx = horizontal_idx;
 
+        let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
+
         let (horizontal_word_len, slot_direction) = loop {
-            if self.layout[vertical_idx as usize][curr_horizontal_idx as usize].is_clue() {
+            if self.layout[vertical_idx as usize][curr_horizontal_idx as usize].borrow().is_clue() {
                 break (slot_count, SlotDirection::Right);
             } else if curr_horizontal_idx == 0 {
                 slot_count += 1;
+                slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][curr_horizontal_idx as usize]));
                 break (slot_count, SlotDirection::RightOnBottomSide);
             }
 
             slot_count += 1;
+            slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][curr_horizontal_idx as usize]));
             curr_horizontal_idx -= 1;
         };
 
-        return (horizontal_word_len, slot_direction);
+        slot_cells.reverse();
+
+        return (horizontal_word_len, slot_direction, slot_cells);
     }
     
 
     fn word_len_up_to_curr_cell(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 {
 
-        let (vertical_word_len, _) = self.find_vertical_word_len(vertical_idx, horizontal_idx);
-        let (horizontal_word_len, _) = self.find_horizontal_word_len(vertical_idx, horizontal_idx);
+        let (vertical_word_len, _, _) = self.find_vertical_word_len(vertical_idx, horizontal_idx);
+        let (horizontal_word_len, _, _) = self.find_horizontal_word_len(vertical_idx, horizontal_idx);
 
         return max(vertical_word_len, horizontal_word_len);
     }
@@ -280,17 +322,17 @@ impl ScandiGrid {
 
     fn apply_first_row_column_restrictions(&mut self, vertical_idx: u32, horizontal_idx: u32) -> () {
 
-        if vertical_idx == 0 && horizontal_idx > 0 && self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].is_letter() {
-            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        if vertical_idx == 0 && horizontal_idx > 0 && self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].borrow().is_letter() {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().force_clue();
         }
-        else if vertical_idx == 0 && horizontal_idx > 0 && !self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].is_clue_of_type(SlotDirection::DownOnRightSide) {
-            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        else if vertical_idx == 0 && horizontal_idx > 0 && !self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].borrow().is_clue_of_type(SlotDirection::DownOnRightSide) {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().force_clue();
         }
-        else if horizontal_idx == 0 && vertical_idx > 0 && self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].is_letter() {
-            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        else if horizontal_idx == 0 && vertical_idx > 0 && self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].borrow().is_letter() {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().force_clue();
         }
-        else if horizontal_idx == 0 && vertical_idx > 0 && !self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].is_clue_of_type(SlotDirection::RightOnBottomSide) {
-            self.layout[vertical_idx as usize][horizontal_idx as usize].force_clue();
+        else if horizontal_idx == 0 && vertical_idx > 0 && !self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].borrow().is_clue_of_type(SlotDirection::RightOnBottomSide) {
+            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().force_clue();
         }
     }
 
@@ -367,8 +409,8 @@ impl ScandiGrid {
             return Err(LayoutError::CannotEnsureAClearWordSlot);
         }
 
-        self.layout[(vertical_idx + dy) as usize][(horizontal_idx + dx) as usize].force_letter();
-        self.layout[(vertical_idx + dy * 2) as usize][(horizontal_idx + dx * 2) as usize].force_letter();
+        self.layout[(vertical_idx + dy) as usize][(horizontal_idx + dx) as usize].borrow_mut().force_letter();
+        self.layout[(vertical_idx + dy * 2) as usize][(horizontal_idx + dx * 2) as usize].borrow_mut().force_letter();
 
         Ok(())
     }
@@ -380,8 +422,8 @@ impl ScandiGrid {
             return Err(LayoutError::CannotEnsureAClearWordSlot);
         }
 
-        self.layout[(vertical_idx + dy) as usize][(horizontal_idx + dx) as usize].force_letter();
-        self.layout[(vertical_idx + 1) as usize][(horizontal_idx + 1) as usize].force_letter();
+        self.layout[(vertical_idx + dy) as usize][(horizontal_idx + dx) as usize].borrow_mut().force_letter();
+        self.layout[(vertical_idx + 1) as usize][(horizontal_idx + 1) as usize].borrow_mut().force_letter();
 
         Ok(())
     }
@@ -425,11 +467,11 @@ impl ScandiGrid {
     }
 
     fn is_start_of_angled_horizontal_slot(&self, vertical_idx: u32, horizontal_idx: u32) -> bool {
-        return vertical_idx > 0 && self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].is_clue_of_type(SlotDirection::RightOnBottomSide)
+        return vertical_idx > 0 && self.layout[(vertical_idx - 1) as usize][horizontal_idx as usize].borrow().is_clue_of_type(SlotDirection::RightOnBottomSide)
     }
 
     fn is_start_of_angled_vertical_slot(&self, vertical_idx: u32, horizontal_idx: u32) -> bool {
-        return horizontal_idx > 0 && self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].is_clue_of_type(SlotDirection::DownOnRightSide)
+        return horizontal_idx > 0 && self.layout[vertical_idx as usize][(horizontal_idx - 1) as usize].borrow().is_clue_of_type(SlotDirection::DownOnRightSide)
     }
 
     fn prevent_letter_underneath(&mut self, vertical_idx: u32, horizontal_idx: u32) -> () {
@@ -437,7 +479,7 @@ impl ScandiGrid {
             return;
         }
 
-        self.layout[(vertical_idx + 1) as usize][horizontal_idx as usize].force_clue();
+        self.layout[(vertical_idx + 1) as usize][horizontal_idx as usize].borrow_mut().force_clue();
     }
 
     fn prevent_letter_on_the_right(&mut self, vertical_idx: u32, horizontal_idx: u32) -> () {
@@ -445,6 +487,6 @@ impl ScandiGrid {
             return;
         }
 
-        self.layout[vertical_idx as usize][(horizontal_idx + 1) as usize].force_clue();
+        self.layout[vertical_idx as usize][(horizontal_idx + 1) as usize].borrow_mut().force_clue();
     }
 }

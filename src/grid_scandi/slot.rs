@@ -3,6 +3,9 @@ use serde::{Serialize, Deserialize};
 
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::cell::Ref;
+
+use crate::grid_scandi::gridcell::GridCell;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum SlotDirection {
@@ -13,12 +16,11 @@ pub enum SlotDirection {
 }
 
 pub struct Slot {
-    slot_length: u32,
-    available_words: Rc<RefCell<BTreeSet<String>>>,
     selected_word: Option<String>,
-    // using coords here instead of a &GridCell because Wasm can't handle lifetime parameters
-    associated_clue_cell_height_coord: u32,
-    associated_clue_cell_width_coord: u32,
+    available_words: Rc<RefCell<BTreeSet<String>>>,
+    associated_clue_cell: Rc<RefCell<GridCell>>,
+    slot_length: u32,
+    slot_cells: Vec<Rc<RefCell<GridCell>>>,
     slot_direction: SlotDirection 
 }
 
@@ -26,13 +28,24 @@ impl Slot {
     pub fn new(
         slot_length: u32,
         available_words: Rc<RefCell<BTreeSet<String>>>, 
-        associated_clue_cell_height_coord: u32, 
-        associated_clue_cell_width_coord: u32, 
+        associated_clue_cell: Rc<RefCell<GridCell>>,
+        slot_cells: Vec<Rc<RefCell<GridCell>>>,
         slot_direction: SlotDirection) 
     -> Self {
 
         let selected_word = None;
 
-        Self { slot_length, available_words, selected_word, associated_clue_cell_height_coord, associated_clue_cell_width_coord, slot_direction }
+        Self { 
+            selected_word, 
+            available_words, 
+            associated_clue_cell,
+            slot_length, 
+            slot_cells,
+            slot_direction 
+        }
+    }
+
+    pub fn get_available_word_set(&self) -> Ref<'_, BTreeSet<String>> {
+        self.available_words.borrow()
     }
 }
