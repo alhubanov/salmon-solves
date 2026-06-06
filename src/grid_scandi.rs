@@ -18,6 +18,7 @@ mod slot;
 use slot::Slot;
 use slot::SlotDirection;
 use gridcell::GridCell;
+use crate::grid_scandi::LayoutError::NoPossibleDomain;
 use crate::grid_scandi::gridcell::PossibleCellState;
 use crate::grid::Grid;
 
@@ -33,7 +34,7 @@ mod constants {
 }
 
 pub enum LayoutError {
-    // NoPossibleDomain,
+    NoPossibleDomain,
     // LowClueDensity,
     // HighClueDensity,
     // IsolatedLetter,
@@ -84,6 +85,8 @@ impl Grid for ScandiGrid {
                 .insert(word.to_string());
         }
 
+        let mut slot_id : u32 = 0;
+
         for vertical_idx in 0..self.height {
             for horizontal_idx in 0..self.width {
 
@@ -107,6 +110,7 @@ impl Grid for ScandiGrid {
                         let vertical_slot = match slot_direction_for_vertical {
                             SlotDirection::DownOnRightSide => 
                                 Slot::new(
+                                    slot_id,
                                     word_length_from_vertical as u32, 
                                     Rc::clone(&available_words_for_vertical_slot), 
                                     Rc::clone(&(self.layout[(vertical_idx - word_length_from_vertical as u32) as usize][(horizontal_idx - 1) as usize])), 
@@ -115,6 +119,7 @@ impl Grid for ScandiGrid {
                                 ),
                             SlotDirection::Down => 
                                 Slot::new(
+                                    slot_id,
                                     word_length_from_vertical as u32, 
                                     Rc::clone(&available_words_for_vertical_slot), 
                                     Rc::clone(&(self.layout[(vertical_idx - word_length_from_vertical as u32 - 1) as usize][horizontal_idx as usize])), 
@@ -137,6 +142,7 @@ impl Grid for ScandiGrid {
                         let horizontal_slot = match slot_direction_for_horizontal {
                             SlotDirection::RightOnBottomSide => 
                                 Slot::new(
+                                    slot_id,
                                     word_length_from_horizontal as u32, 
                                     Rc::clone(&available_words_for_horizontal_slot), 
                                     Rc::clone(&(self.layout[(vertical_idx - 1) as usize][(horizontal_idx - word_length_from_horizontal as u32) as usize])), 
@@ -145,6 +151,7 @@ impl Grid for ScandiGrid {
                                 ),
                             SlotDirection::Right => 
                                 Slot::new(
+                                    slot_id,
                                     word_length_from_horizontal as u32, 
                                     Rc::clone(&available_words_for_horizontal_slot),
                                     Rc::clone(&(self.layout[vertical_idx as usize][(horizontal_idx - word_length_from_horizontal as u32 - 1) as usize])), 
@@ -155,17 +162,30 @@ impl Grid for ScandiGrid {
                         };
                         self.word_slots.push(horizontal_slot);
                     }
+
+                    slot_id += 1;
                 }
             }
         }
 
-        self.word_slots.sort_by(|slot1, slot2| slot1.get_available_word_set().len().cmp(&slot2.get_available_word_set().len()));
+        self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
 
-        // for slot in &mut self.word_slots {
+        for slot in &mut self.word_slots {
 
-        //     slot.select_word_randomly()
+            let already_recursed_crossing_ids = BTreeSet::new();
+            while let Err((LayoutError::NoPossibleDomain, crossing_ids)) = slot.allocate_word() {
+                let mut slot_ids_to_backtrack = crossing_ids.difference(&already_recursed_crossing_ids);
+                
+                // 1. if crossing_ids is the same as already_recursed_crossing_ids, clear already_recursed_crossing_ids and reset to a full set of crossing ids.
+                // 2. deallocate and discard the word in the slot of the last id in the slot_ids_to_backtrack 
+                // 3. recursively call the same while let loop for that slot
+                // 4. assign the slot_id in the already_recursed_crossing_ids
+                // 5. come up with a break condition for this loop if it never succeeds
 
-        // }
+                ...
+            }
+
+        }
     }
 
     fn print(&self) -> () {
