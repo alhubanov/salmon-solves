@@ -2,9 +2,18 @@ use wasm_bindgen::prelude::*;
 
 use crate::{grid_scandi::ScandiGrid, grid_simple::SimpleGrid, ui_input_utilities::GridType};
 
+pub enum LayoutError {
+    NoPossibleDomainAfterRecursion,
+    NoPossibleDomain,
+    // LowClueDensity,
+    // HighClueDensity,
+    // IsolatedLetter,
+    CannotEnsureAClearWordSlot
+}
+
 pub trait Grid {
     fn initialize(width: u32, height: u32) -> Self;
-    fn construct(&mut self) -> ();
+    fn construct(&mut self) -> Result<(), LayoutError>;
     fn print(&self) -> ();
 }
 
@@ -27,7 +36,7 @@ impl Grid for GenericGrid  {
         panic!("Use GenericGrid::initialize(grid_type, width, height) instead.")
     }
 
-    fn construct(&mut self) -> () {
+    fn construct(&mut self) -> Result<(), LayoutError> {
         match self {
             Self::Scandi(scandi_grid) => scandi_grid.construct(),
             Self::Simple(simple_grid) => simple_grid.construct()

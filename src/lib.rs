@@ -30,7 +30,12 @@ pub fn run() -> () {
 pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32) -> T {
 
     let mut grid = T::initialize(width, height);
-    grid.construct();
+    for idx in 0..10 {
+        println!("Attempt {}...", idx);
+        if let Ok(_) = grid.construct() {
+            break;
+        }
+    }
 
     grid
 }
@@ -41,7 +46,11 @@ pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Resul
     let settings: ui_input_utilities::UserSettings = serde_wasm_bindgen::from_value(settings)?;
 
     let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
-    grid.construct();
+    for _ in 0..10 {
+        if let Ok(_) = grid.construct() {
+            break;
+        }
+    }
 
     return Ok(Crossword::new(grid));
 }   

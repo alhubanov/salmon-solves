@@ -85,7 +85,11 @@ impl GridCell {
         }
         
         if self.assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Letter)) {
-            print!("_ ");
+            match &self.cell {
+                None => print!("_ "),
+                Some(CellType::Letter(letter)) => print!("{} ", letter.get_cell_value()),
+                _ => print!("0 ")
+            }
         }
 
         print!(" ");

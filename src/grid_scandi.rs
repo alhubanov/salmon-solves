@@ -18,7 +18,7 @@ mod slot;
 use slot::Slot;
 use slot::SlotDirection;
 use gridcell::GridCell;
-use crate::grid_scandi::LayoutError::NoPossibleDomain;
+use crate::grid::LayoutError;
 use crate::grid_scandi::gridcell::PossibleCellState;
 use crate::grid::Grid;
 
@@ -31,14 +31,6 @@ mod constants {
     pub const MEDIAN_WORD_LENGTH : i32                         = 6; 
     pub const PER_LETTER_LENGTH_PRESSURE : f32                 = 0.08;
     pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
-}
-
-pub enum LayoutError {
-    NoPossibleDomain,
-    // LowClueDensity,
-    // HighClueDensity,
-    // IsolatedLetter,
-    CannotEnsureAClearWordSlot
 }
 
 pub struct ScandiGrid {
@@ -72,7 +64,7 @@ impl Grid for ScandiGrid {
         Self { width, height, layout, clues_placed, num_cells_accessed, word_slots }
     }
 
-    fn construct(&mut self) -> () {
+    fn construct(&mut self) -> Result<(), LayoutError> {
 
         let mut word_collections_per_length : HashMap<u32, Rc<RefCell<BTreeSet<String>>>> = HashMap::new();
 
@@ -128,7 +120,10 @@ impl Grid for ScandiGrid {
                                 ),
                             _ => panic!("Impossible clue cell placement.")
                         };
+
+                        println!("1: Pushing slot id {}", slot_id);
                         self.word_slots.push(vertical_slot);
+                        slot_id += 1;
                     }
 
                     let (word_length_from_horizontal, slot_direction_for_horizontal, horizontal_slot_cells) = self.find_horizontal_word_len(vertical_idx, horizontal_idx);
@@ -160,33 +155,30 @@ impl Grid for ScandiGrid {
                                 ),
                             _ => panic!("Impossible clue cell placement.")
                         };
-                        self.word_slots.push(horizontal_slot);
-                    }
 
-                    slot_id += 1;
+                        println!("2: Pushing slot id {}", slot_id);
+                        self.word_slots.push(horizontal_slot);
+                        slot_id += 1;
+                    }
                 }
             }
         }
 
+        println!("Before sorting...");
         self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
+        println!("After sorting...");
 
-        for slot in &mut self.word_slots {
+        for i in 0..self.word_slots.len() {
 
-            let already_recursed_crossing_ids = BTreeSet::new();
-            while let Err((LayoutError::NoPossibleDomain, crossing_ids)) = slot.allocate_word() {
-                let mut slot_ids_to_backtrack = crossing_ids.difference(&already_recursed_crossing_ids);
-                
-                // 1. if crossing_ids is the same as already_recursed_crossing_ids, clear already_recursed_crossing_ids and reset to a full set of crossing ids.
-                // 2. deallocate and discard the word in the slot of the last id in the slot_ids_to_backtrack 
-                // 3. recursively call the same while let loop for that slot
-                // 4. assign the slot_id in the already_recursed_crossing_ids
-                // 5. come up with a break condition for this loop if it never succeeds
+            println!("in loop for {}", i);
+            let slot_id = self.word_slots[i].get_slot_id();
 
-                ...
-            }
-
+            println!("slot_id to try {}", slot_id);
+            self.try_word_allocation(slot_id)?;
         }
-    }
+
+        Ok(())
+    } 
 
     fn print(&self) -> () {
         for vertical_idx in 0..self.height {
@@ -200,6 +192,72 @@ impl Grid for ScandiGrid {
 }
 
 impl ScandiGrid {
+
+    fn try_word_allocation(&mut self, slot_id: u32) -> Result<(), LayoutError> {
+
+        println!("Trying for slot id {}", slot_id);
+
+        let mut already_recursed_crossing_ids = BTreeSet::new();
+        while let Err((LayoutError::NoPossibleDomain, crossing_ids)) = 
+        {
+            println!("Before getting slot.");
+            let slot = self.get_slot(slot_id).unwrap();
+            println!("After getting slot.");
+            slot.allocate_word()
+        } 
+        {
+            if crossing_ids.is_empty()  {
+                return Err(LayoutError::NoPossibleDomainAfterRecursion);
+            }
+
+            println!("Before 1.");
+
+            // 1. if crossing_ids is the same as already_recursed_crossing_ids, clear already_recursed_crossing_ids and reset to a full set of crossing ids.
+            let mut slot_ids_to_backtrack : BTreeSet<&u32> = crossing_ids.difference(&already_recursed_crossing_ids).collect();
+            if !crossing_ids.is_empty() && slot_ids_to_backtrack.is_empty() {
+                slot_ids_to_backtrack = crossing_ids.iter().collect();
+            }
+
+            println!("Before 2.");
+
+            // 2. deallocate and discard the word in the slot of the last id in the slot_ids_to_backtrack 
+            let backtrack_id = **(slot_ids_to_backtrack.last().unwrap());
+            {
+                let slot_to_backtrack = self.get_slot(backtrack_id).unwrap();
+                slot_to_backtrack.deallocate_and_discard_word();
+            }
+
+            println!("Before 3.");
+
+            // 3. recursively call the same while let loop for that slot
+            self.try_word_allocation(backtrack_id)?;
+
+            println!("Before 4.");
+
+            // 4. assign the slot_id in the already_recursed_crossing_ids
+            already_recursed_crossing_ids.insert(backtrack_id);
+
+            println!("Before end.");
+        }
+
+        Ok(())
+    }
+
+    fn get_slot(&mut self, slot_id: u32) -> Option<&mut Slot> {
+
+        println!("Getting slot for slot id {}", slot_id);
+        for slot in &mut self.word_slots {
+
+            let curr_slot_id = slot.get_slot_id();
+            println!("Ref slot id is {}", curr_slot_id);
+
+            if curr_slot_id == slot_id {
+                return Some(slot);
+            }
+        }
+
+        None
+    }
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
 
@@ -274,8 +332,11 @@ impl ScandiGrid {
                 break (slot_count, SlotDirection::DownOnRightSide);
             }
 
+            if slot_count >= 0 {
+                slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][horizontal_idx as usize]));
+            }
+
             slot_count += 1;
-            slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][horizontal_idx as usize]));
             curr_vertical_idx -= 1;
         };
 
@@ -299,8 +360,11 @@ impl ScandiGrid {
                 break (slot_count, SlotDirection::RightOnBottomSide);
             }
 
+            if slot_count >= 0 {
+                slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][curr_horizontal_idx as usize]));
+            }
+
             slot_count += 1;
-            slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][curr_horizontal_idx as usize]));
             curr_horizontal_idx -= 1;
         };
 

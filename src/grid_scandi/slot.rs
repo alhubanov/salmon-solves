@@ -41,6 +41,10 @@ impl Slot {
         slot_direction: SlotDirection) 
     -> Self {
 
+        println!("Creating slot with slot id {}", slot_id);
+        println!("Slot len is {}", slot_length);
+        println!("Num of slot cells is {}", slot_cells.len());
+
         let selected_word = None;
         let suitable_discarded_words = BTreeSet::new();
 
@@ -60,13 +64,20 @@ impl Slot {
         self.suitable_words.borrow()
     }
 
+    pub fn get_slot_id(&self) -> u32 {
+        self.slot_id
+    }
+
     pub fn select_word_to_place(&mut self) -> Result<(), (LayoutError, BTreeSet<u32>)> {
 
         let mut unsuitable_words : BTreeSet<String> = BTreeSet::new();
         let mut crossing_slot_ids : BTreeSet<u32> = BTreeSet::new();
 
         for (idx, cell) in self.slot_cells.iter().enumerate() {
+
+            println!("Iterating through cell {}", idx);
             if cell.borrow().cell.is_none() {
+                println!("Cell is none still");
                 continue;
             }
 
@@ -92,6 +103,9 @@ impl Slot {
 
         self.selected_word = Some(sampled_word);
 
+        println!("1. Selected word is {}", self.selected_word.as_ref().unwrap());
+
+
         Ok(())
     }
 
@@ -99,8 +113,14 @@ impl Slot {
 
         self.select_word_to_place()?;
 
+        println!("2. Selected word is {}", self.selected_word.as_ref().unwrap());
+
         for (idx, cell) in self.slot_cells.iter().enumerate() {
             if cell.borrow().cell.is_none() {
+
+                println!("In allocating.");
+                println!("For idx {} the nth char is {:?}", idx, self.selected_word.as_ref().unwrap().chars().nth(idx));
+
                 cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(self.selected_word.as_ref().unwrap().chars().nth(idx).unwrap())));
                 cell.borrow_mut().slot_id = Some(self.slot_id);
             }
