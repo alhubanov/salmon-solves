@@ -198,7 +198,7 @@ impl Grid for ScandiGrid {
 
         for i in 0..self.word_slots.len() {
 
-            // println!("in loop for {}", i);
+            println!("in loop for slot {} of total {}", i + 1, self.word_slots.len());
             let slot_id = self.word_slots[i].get_slot_id();
 
             // println!("slot_id to try {}", slot_id);

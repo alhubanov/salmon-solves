@@ -71,41 +71,45 @@ impl Slot {
 
     pub fn select_word_to_place(&mut self) -> Result<(), (LayoutError, BTreeSet<u32>)> {
 
+        println!("Selecting word for slot id {}", self.slot_id);
+
         let mut unsuitable_words : BTreeSet<String> = BTreeSet::new();
         let mut crossing_slot_ids : BTreeSet<u32> = BTreeSet::new();
 
-        for (idx, cell) in self.slot_cells.iter().enumerate() {
-
-            // printlnln!("Iterating through cell {}", idx);
-            if cell.borrow().cell.is_none() {
-                // printlnln!("Cell is none still");
-                continue;
-            }
-
-            for word in self.suitable_words.borrow().iter() {
-                match cell.borrow().cell.as_ref().unwrap() {
-                    CellType::Letter(letter) => {
-                        crossing_slot_ids.extend(cell.borrow().slot_ids.as_ref().unwrap());
-
-                        if letter.get_cell_value() != word.chars().nth(idx).unwrap() {
-                            unsuitable_words.insert(word.clone());
-                        }
-                    },
-                    CellType::Clue(_) => panic!("Impossible slot configuration.")
-                };
+        for cell in self.slot_cells.iter() {
+            if let Some(CellType::Letter(_)) = cell.borrow().cell.as_ref() {
+                crossing_slot_ids.extend(cell.borrow().slot_ids.as_ref().unwrap());
             }
         }
 
-        let unapplicable_words : BTreeSet<String> = unsuitable_words.union(&self.suitable_discarded_words).cloned().collect();
+        for word in self.suitable_words.borrow().iter() 
+        {
+            let chars: Vec<char> = word.chars().collect();
+            for (idx, cell) in self.slot_cells.iter().enumerate() 
+            {
+                if let Some(CellType::Letter(letter)) = cell.borrow().cell.as_ref() 
+                {
+                    if letter.get_cell_value() != chars[idx] 
+                    {
+                        unsuitable_words.insert(word.clone());
+                        break;
+                    }
+                }
+            }
+        }
 
-        let suitable_words = self.suitable_words.borrow();
         let mut rng = rand::rng();
-        let sampled_word = suitable_words.difference(&unapplicable_words).choose(&mut rng).ok_or((LayoutError::NoPossibleDomain, crossing_slot_ids))?.clone();
+        let sampled_word = self.suitable_words
+                            .borrow()
+                            .iter()
+                            .filter(|word| !unsuitable_words.contains(*word) && !self.suitable_discarded_words.contains(*word))
+                            .choose(&mut rng)
+                            .ok_or((LayoutError::NoPossibleDomain, crossing_slot_ids))?
+                            .clone();
 
         self.selected_word = Some(sampled_word);
 
         // printlnln!("1. Selected word is {}", self.selected_word.as_ref().unwrap());
-
 
         Ok(())
     }
