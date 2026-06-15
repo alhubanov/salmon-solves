@@ -20,7 +20,7 @@ pub enum PossibleCellState {
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct GridCell {
     pub cell: Option<CellType>,
-    pub slot_id: Option<u32>,
+    pub slot_ids: Option<BTreeSet<u32>>,
     pub assigned_cell_states: BTreeSet<PossibleCellState>,
     pub possible_remaining_cell_states: BTreeSet<PossibleCellState>
 }
@@ -61,7 +61,7 @@ impl GridCell {
 
         Self { 
             cell: None,
-            slot_id: None,
+            slot_ids: None,
             assigned_cell_states: BTreeSet::new(),
             possible_remaining_cell_states: cell_states
         }
