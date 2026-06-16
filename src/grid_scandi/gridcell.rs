@@ -165,4 +165,19 @@ impl GridCell {
     pub fn is_clue_of_type(&self, clue_kind: SlotDirection) -> bool {
         return self.assigned_cell_states.contains(&PossibleCellState::Clue(clue_kind));
     }
+
+    pub fn insert_slot_id(&mut self, slot_id: Option<u32>) -> () {
+        if let None = slot_id {
+            return;
+        }
+
+        match &mut self.slot_ids {
+            Some(set) => { set.insert(slot_id.unwrap()); },
+            None => {
+                let mut new_set : BTreeSet<u32> = BTreeSet::new();
+                new_set.insert(slot_id.unwrap());
+                self.slot_ids = Some(new_set);
+            }
+        };
+    }
 }

@@ -42,10 +42,6 @@ impl Slot {
         ) 
     -> Self {
 
-        // printlnln!("Creating slot with slot id {}", slot_id);
-        // printlnln!("Slot len is {}", slot_length);
-        // printlnln!("Num of slot cells is {}", slot_cells.len());
-
         let selected_word = None;
         let suitable_discarded_words = BTreeSet::new();
 
@@ -71,14 +67,14 @@ impl Slot {
 
     pub fn select_word_to_place(&mut self) -> Result<(), (LayoutError, BTreeSet<u32>)> {
 
-        println!("Selecting word for slot id {}", self.slot_id);
+        // println!("Selecting word for slot id {}", self.slot_id);
 
         let mut unsuitable_words : BTreeSet<String> = BTreeSet::new();
         let mut crossing_slot_ids : BTreeSet<u32> = BTreeSet::new();
 
         for cell in self.slot_cells.iter() {
             if let Some(CellType::Letter(_)) = cell.borrow().cell.as_ref() {
-                crossing_slot_ids.extend(cell.borrow().slot_ids.as_ref().unwrap());
+                crossing_slot_ids.extend(cell.borrow().slot_ids.as_ref().unwrap().iter().filter(|elem| *elem != &self.slot_id));
             }
         }
 
@@ -109,8 +105,6 @@ impl Slot {
 
         self.selected_word = Some(sampled_word);
 
-        // printlnln!("1. Selected word is {}", self.selected_word.as_ref().unwrap());
-
         Ok(())
     }
 
@@ -118,27 +112,9 @@ impl Slot {
 
         self.select_word_to_place()?;
 
-        // printlnln!("2. Selected word is {}", self.selected_word.as_ref().unwrap());
-
         for (idx, cell) in self.slot_cells.iter().enumerate() {
             if cell.borrow().cell.is_none() {
-
-                // printlnln!("In allocating.");
-                // printlnln!("For idx {} the nth char is {:?}", idx, self.selected_word.as_ref().unwrap().chars().nth(idx));
-
                 cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(self.selected_word.as_ref().unwrap().chars().nth(idx).unwrap())));
-                
-                let mut slot_ids = BTreeSet::new();
-                slot_ids.insert(self.slot_id);
-                cell.borrow_mut().slot_ids = Some(slot_ids);
-            }
-            // this else if assumes that it cannot be Some(Clue(...))
-            else if cell.borrow().cell.is_some() {
-
-                match cell.borrow_mut().slot_ids.as_mut() {
-                    Some(set) => { set.insert(self.slot_id); },
-                    None => panic!("Encountered an assigned letter cell with no slot id.")
-                }
             }
         }
 
@@ -147,17 +123,10 @@ impl Slot {
         Ok(())
     }
 
-    pub fn deallocate_and_discard_word(&mut self) -> () {
-
+    pub fn deallocate_and_discard_word(&mut self) -> () 
+    {
         for cell in self.slot_cells.iter() {
-            if cell.borrow().cell.is_some() && cell.borrow().slot_ids.as_ref().unwrap().contains(&self.slot_id) {
-                cell.borrow_mut().slot_ids.as_mut().unwrap().remove(&self.slot_id);
-            }
-
-            if cell.borrow_mut().slot_ids.as_mut().unwrap().is_empty() {
-                cell.borrow_mut().cell = None;
-                cell.borrow_mut().slot_ids = None;
-            }
+            cell.borrow_mut().cell = None;
         }
 
         // It is not clear to me whether discarding words permanently is good enough here.
