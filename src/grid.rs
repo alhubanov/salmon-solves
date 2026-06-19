@@ -5,6 +5,7 @@ use crate::{grid_scandi::ScandiGrid, grid_simple::SimpleGrid, ui_input_utilities
 pub enum LayoutError {
     NoPossibleDomainAfterRecursion,
     NoPossibleDomain,
+    CannotPlaceWord,
     // LowClueDensity,
     // HighClueDensity,
     // IsolatedLetter,

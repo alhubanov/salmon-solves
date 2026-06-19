@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::collections::{BTreeSet};
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
@@ -20,11 +21,14 @@ pub enum SlotDirection {
     RightOnBottomSide
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Slot {
     slot_id: u32,
     selected_word: Option<String>,
     suitable_words: Rc<RefCell<BTreeSet<String>>>,
     suitable_discarded_words: BTreeSet<String>, 
+    unsuitable_words_per_crossing: BTreeMap<u32, BTreeSet<String>>,
+    temporary_unsuitable_words: BTreeSet<String>,
     // associated_clue_cell: Rc<RefCell<GridCell>>,
     // slot_length: u32,
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
@@ -44,12 +48,16 @@ impl Slot {
 
         let selected_word = None;
         let suitable_discarded_words = BTreeSet::new();
+        let unsuitable_words_per_crossing = BTreeMap::new();
+        let temporary_unsuitable_words = BTreeSet::new();
 
         Self { 
             slot_id,
             selected_word, 
             suitable_words, 
             suitable_discarded_words,
+            unsuitable_words_per_crossing,
+            temporary_unsuitable_words,
             // associated_clue_cell,
             // slot_length, 
             slot_cells,
@@ -65,53 +73,92 @@ impl Slot {
         self.slot_id
     }
 
-    pub fn select_word_to_place(&mut self) -> Result<(), (LayoutError, BTreeSet<u32>)> {
+    pub fn get_crossing_slot_ids(&self) -> BTreeSet<u32> {
 
-        // println!("Selecting word for slot id {}", self.slot_id);
-
-        let mut unsuitable_words : BTreeSet<String> = BTreeSet::new();
         let mut crossing_slot_ids : BTreeSet<u32> = BTreeSet::new();
-
         for cell in self.slot_cells.iter() {
             if let Some(CellType::Letter(_)) = cell.borrow().cell.as_ref() {
                 crossing_slot_ids.extend(cell.borrow().slot_ids.as_ref().unwrap().iter().filter(|elem| *elem != &self.slot_id));
             }
         }
 
-        for word in self.suitable_words.borrow().iter() 
+        crossing_slot_ids
+    }
+
+    pub fn has_placed_word(&self) -> bool {
+        self.selected_word.is_some()
+    }
+
+    fn check_if_placement_is_possible(&self, sampled_word: &String) -> Result<(), LayoutError> {
+
+        let letters : Vec<char> = sampled_word.chars().collect();
+        for idx in 0..self.slot_cells.len() 
         {
-            let chars: Vec<char> = word.chars().collect();
-            for (idx, cell) in self.slot_cells.iter().enumerate() 
+            match &self.slot_cells[idx].borrow().cell 
             {
-                if let Some(CellType::Letter(letter)) = cell.borrow().cell.as_ref() 
-                {
-                    if letter.get_cell_value() != chars[idx] 
-                    {
-                        unsuitable_words.insert(word.clone());
-                        break;
-                    }
-                }
+                Some(CellType::Letter(letter)) => { if letter.get_cell_value() != letters[idx] { return Err(LayoutError::CannotPlaceWord); }},
+                _  => continue
             }
         }
-
-        let mut rng = rand::rng();
-        let sampled_word = self.suitable_words
-                            .borrow()
-                            .iter()
-                            .filter(|word| !unsuitable_words.contains(*word) && !self.suitable_discarded_words.contains(*word))
-                            .choose(&mut rng)
-                            .ok_or((LayoutError::NoPossibleDomain, crossing_slot_ids))?
-                            .clone();
-
-        self.selected_word = Some(sampled_word);
 
         Ok(())
     }
 
-    pub fn allocate_word(&mut self) -> Result<(), (LayoutError, BTreeSet<u32>)> {
+    pub fn nominate_word(&mut self) -> Result<String, LayoutError> {
+        
+        let mut rng = rand::rng();
+        let mut sampled_word : String;
 
-        self.select_word_to_place()?;
+        loop {
+            sampled_word = self.suitable_words
+                            .borrow()
+                            .iter()
+                            .filter(|word| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*word)) && !self.suitable_discarded_words.contains(*word))
+                            .choose(&mut rng)
+                            .ok_or(LayoutError::NoPossibleDomain)?
+                            .clone();
 
+            if let Ok(_) = self.check_if_placement_is_possible(&sampled_word) {
+                break;
+            }
+        }
+
+        return Ok(sampled_word);
+    }
+
+    pub fn has_possibilities_remaining(&mut self, slot_id: u32, nominated_word: &String) -> bool {
+
+        self.temporary_unsuitable_words.clear();
+
+        let mut num_unsuitable_words_found = 0;
+        for curr_idx in 0..self.slot_cells.len() 
+        {
+            if self.slot_cells[curr_idx].borrow_mut().slot_ids.as_ref().is_some_and(|ids| ids.contains(&slot_id)) {
+                let char_of_interest = nominated_word.chars().nth(curr_idx).expect("Asked to nominate a longer word than slot length.");
+                
+                for word in self.suitable_words.borrow().iter() {
+                    if word.chars().nth(curr_idx).expect("There is a 'suitable' word of wrong length.") != char_of_interest {
+                        self.temporary_unsuitable_words.insert(word.clone());
+                        num_unsuitable_words_found += 1;
+                    }
+                }
+            }
+        };
+
+        num_unsuitable_words_found < self.suitable_words.borrow().len()
+    }
+
+    pub fn remove_unsuitable_words_related_to_slot_id(&mut self, slot_id: u32) -> () {
+        self.unsuitable_words_per_crossing.remove(&slot_id);
+    }
+
+    pub fn apply_restrictions(&mut self, slot_id: u32) -> () {
+        self.unsuitable_words_per_crossing.insert(slot_id, std::mem::take(&mut self.temporary_unsuitable_words));
+    }
+
+    pub fn place_nominated_word(&mut self, nominated_word: String) -> () 
+    {
+        self.selected_word = Some(nominated_word);
         for (idx, cell) in self.slot_cells.iter().enumerate() {
             if cell.borrow().cell.is_none() {
                 cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(self.selected_word.as_ref().unwrap().chars().nth(idx).unwrap())));
@@ -119,8 +166,6 @@ impl Slot {
         }
 
         self.suitable_words.borrow_mut().remove(&(self.selected_word.clone().unwrap()));
-
-        Ok(())
     }
 
     pub fn deallocate_and_discard_word(&mut self) -> () 

@@ -187,11 +187,36 @@ impl Grid for ScandiGrid {
 
         self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
 
-        for i in 0..self.word_slots.len() {
+        let mut idx_to_add_to_stack = 0;
+        let mut slot_stack : Vec<u32> = Vec::new();
 
-            // println!("in loop for slot {} of total {}", i + 1, self.word_slots.len());
-            let slot_id = self.word_slots[i].get_slot_id();
-            self.try_word_allocation(slot_id)?;
+        slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
+        idx_to_add_to_stack += 1;
+
+        while !slot_stack.is_empty() {
+
+            let curr_slot_id = slot_stack.pop().unwrap();
+            
+            if let Err(crossing_ids) = self.try_word_allocation(curr_slot_id) {
+
+                for crossing_id in crossing_ids {
+                    let mut crossing_slot = self.get_slot(crossing_id);
+                    crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
+
+                    let secondary_crossing_ids = crossing_slot.unwrap().get_crossing_slot_ids();
+                    for id in secondary_crossing_ids {
+                        let secondary_crossing_slot = self.get_slot(id);
+                        secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
+                    }
+
+                    slot_stack.push(crossing_id);
+                }
+            }
+            else if idx_to_add_to_stack < self.word_slots.len() && !self.word_slots[idx_to_add_to_stack].has_placed_word()
+            {
+                slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id());
+                idx_to_add_to_stack += 1; 
+            } 
         }
 
         Ok(())
@@ -210,40 +235,40 @@ impl Grid for ScandiGrid {
 
 impl ScandiGrid {
 
-    fn try_word_allocation(&mut self, slot_id: u32) -> Result<(), LayoutError> {
-
-        let mut already_recursed_crossing_ids = BTreeSet::new();
-        while let Err((LayoutError::NoPossibleDomain, crossing_ids)) = 
+    fn try_word_allocation(&mut self, slot_id: u32) -> Result<(), BTreeSet<u32>> 
+    {
+        let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossing_slot_ids();
+    
+        'selections: loop 
         {
-            let slot = self.get_slot(slot_id).unwrap();
-            slot.allocate_word()
-        } 
-        {
-            if crossing_ids.is_empty()  {
-                return Err(LayoutError::NoPossibleDomainAfterRecursion);
-            }
-
-            // 1. if crossing_ids is the same as already_recursed_crossing_ids, clear already_recursed_crossing_ids and reset to a full set of crossing ids.
-            let mut slot_ids_to_backtrack : BTreeSet<&u32> = crossing_ids.difference(&already_recursed_crossing_ids).collect();
-            if !crossing_ids.is_empty() && slot_ids_to_backtrack.is_empty() {
-                slot_ids_to_backtrack = crossing_ids.iter().collect();
-            }
-
-            // 2. deallocate and discard the word in the slot of the last id in the slot_ids_to_backtrack 
-            let backtrack_id = **(slot_ids_to_backtrack.last().unwrap());
+            let nominated_word = 
             {
-                let slot_to_backtrack = self.get_slot(backtrack_id).unwrap();
-                slot_to_backtrack.deallocate_and_discard_word();
+                let slot = self.get_slot(slot_id).unwrap();
+                slot.nominate_word().or(Err(slot_crossing_ids.clone()))?
+            };
+
+            for crossing_id in &slot_crossing_ids 
+            {
+                let crossing_slot = self.get_slot(*crossing_id).unwrap();
+                if crossing_slot.has_placed_word() 
+                {
+                    continue;
+                }
+                else if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word)
+                {
+                    continue 'selections;
+                }
             }
-
-            // 3. recursively call the same while let loop for that slot
-            self.try_word_allocation(backtrack_id)?;
-
-            // 4. assign the slot_id in the already_recursed_crossing_ids
-            already_recursed_crossing_ids.insert(backtrack_id);
-        }
-
-        Ok(())
+        
+            self.get_slot(slot_id).unwrap().place_nominated_word(nominated_word);
+            for crossing_id in slot_crossing_ids 
+            {
+                let crossing_slot = self.get_slot(crossing_id);
+                crossing_slot.unwrap().apply_restrictions(slot_id);
+            }
+        
+            return Ok(());
+        };
     }
 
     fn get_slot(&mut self, slot_id: u32) -> Option<&mut Slot> {
