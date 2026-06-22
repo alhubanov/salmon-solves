@@ -73,12 +73,15 @@ impl Slot {
         self.slot_id
     }
 
-    pub fn get_crossing_slot_ids(&self) -> BTreeSet<u32> {
+    pub fn get_crossings(&self) -> BTreeSet<(u32, u32)> {
 
-        let mut crossing_slot_ids : BTreeSet<u32> = BTreeSet::new();
-        for cell in self.slot_cells.iter() {
-            if let Some(CellType::Letter(_)) = cell.borrow().cell.as_ref() {
-                crossing_slot_ids.extend(cell.borrow().slot_ids.as_ref().unwrap().iter().filter(|elem| *elem != &self.slot_id));
+        let mut crossing_slot_ids : BTreeSet<(u32, u32)> = BTreeSet::new();
+        for (idx, cell) in self.slot_cells.iter().enumerate() 
+        {
+            let cell_foreign_crossing_id : Option<u32> = cell.borrow().slot_ids.as_ref().unwrap().iter().find(|elem| *elem != &self.slot_id).copied();
+            if cell_foreign_crossing_id.is_some() 
+            {
+                crossing_slot_ids.insert((idx as u32, cell_foreign_crossing_id.unwrap()));
             }
         }
 
@@ -89,63 +92,71 @@ impl Slot {
         self.selected_word.is_some()
     }
 
-    fn check_if_placement_is_possible(&self, sampled_word: &String) -> Result<(), LayoutError> {
-
-        let letters : Vec<char> = sampled_word.chars().collect();
-        for idx in 0..self.slot_cells.len() 
-        {
-            match &self.slot_cells[idx].borrow().cell 
-            {
-                Some(CellType::Letter(letter)) => { if letter.get_cell_value() != letters[idx] { return Err(LayoutError::CannotPlaceWord); }},
-                _  => continue
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn nominate_word(&mut self) -> Result<String, LayoutError> {
+    pub fn nominate_word(&mut self, already_attempted_words: &BTreeSet<String>) -> Result<String, LayoutError> {
         
         let mut rng = rand::rng();
-        let mut sampled_word : String;
+        let borrowed_suitable_words = self.suitable_words.borrow();
+        let candidate_words: Vec<&String> = borrowed_suitable_words
+                                                .iter()
+                                                .filter(|word| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*word)) && 
+                                                                !self.suitable_discarded_words.contains(*word) && 
+                                                                !already_attempted_words.contains(*word))
+                                                .collect();
 
-        loop {
-            sampled_word = self.suitable_words
-                            .borrow()
-                            .iter()
-                            .filter(|word| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*word)) && !self.suitable_discarded_words.contains(*word))
-                            .choose(&mut rng)
-                            .ok_or(LayoutError::NoPossibleDomain)?
-                            .clone();
-
-            if let Ok(_) = self.check_if_placement_is_possible(&sampled_word) {
-                break;
-            }
-        }
+        if candidate_words.is_empty() { return Err(LayoutError::NoPossibleDomain); }
+        let idx = rng.random_range(0..candidate_words.len());
+        let sampled_word = candidate_words[idx].clone();
 
         return Ok(sampled_word);
     }
 
-    pub fn has_possibilities_remaining(&mut self, slot_id: u32, nominated_word: &String) -> bool {
-
+    pub fn find_temporary_unsuitable_words(&mut self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> () 
+    {
+        println!("Reducing possibilities for slot {} because of crossing nominate_word {} from slot {}", self.slot_id, nominated_word, slot_id);
         self.temporary_unsuitable_words.clear();
 
-        let mut num_unsuitable_words_found = 0;
-        for curr_idx in 0..self.slot_cells.len() 
+        let required: Vec<(usize, u8)> = self.slot_cells
+                                            .iter()
+                                            .enumerate()
+                                            .filter_map(|(idx, cell)| {
+                                                if cell.borrow().slot_ids.as_ref().is_some_and(|ids| ids.contains(&slot_id)) {
+                                                    println!("Crossing point in slot is idx {}, with letter {}", idx, nominated_word.as_bytes()[idx_of_crossing_letter as usize]);
+                                                    Some((idx, nominated_word.as_bytes()[idx_of_crossing_letter as usize]))
+                                                } else {
+                                                    None
+                                                }
+                                            })
+                                            .collect();
+
+        if required.is_empty() {
+            return;
+        }
+
+        let suitable_words = self.suitable_words.borrow(); 
+        let suitable_words_left : BTreeSet<&String> = suitable_words.iter().filter(|w| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*w))).collect();
+
+        println!("About to try iterating through suitable.");
+        for word in suitable_words_left.iter() 
         {
-            if self.slot_cells[curr_idx].borrow_mut().slot_ids.as_ref().is_some_and(|ids| ids.contains(&slot_id)) {
-                let char_of_interest = nominated_word.chars().nth(curr_idx).expect("Asked to nominate a longer word than slot length.");
-                
-                for word in self.suitable_words.borrow().iter() {
-                    if word.chars().nth(curr_idx).expect("There is a 'suitable' word of wrong length.") != char_of_interest {
-                        self.temporary_unsuitable_words.insert(word.clone());
-                        num_unsuitable_words_found += 1;
-                    }
-                }
+            let bytes = word.as_bytes();
+            let mismatched = required.iter().any(|&(idx, letter)| bytes[idx] != letter);
+            if mismatched 
+            {
+                self.temporary_unsuitable_words.insert(word.to_string());
             }
         };
 
-        num_unsuitable_words_found < self.suitable_words.borrow().len()
+        println!("Found {} temp unsuitable words", self.temporary_unsuitable_words.len());
+    }
+
+    pub fn has_possibilities_remaining(&mut self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
+    {
+        self.find_temporary_unsuitable_words(slot_id, nominated_word, idx_of_crossing_letter);
+
+        let suitable_words = self.suitable_words.borrow(); 
+        let suitable_words_left : BTreeSet<&String> = suitable_words.iter().filter(|w| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*w))).collect();
+
+        self.temporary_unsuitable_words.len() < suitable_words_left.len()
     }
 
     pub fn remove_unsuitable_words_related_to_slot_id(&mut self, slot_id: u32) -> () {
@@ -175,8 +186,12 @@ impl Slot {
         }
 
         // It is not clear to me whether discarding words permanently is good enough here.
-        self.suitable_discarded_words.insert(self.selected_word.clone().unwrap());
-        self.suitable_words.borrow_mut().insert(self.selected_word.clone().unwrap());
+
+        if self.selected_word != None {
+            self.suitable_discarded_words.insert(self.selected_word.clone().unwrap());
+            self.suitable_words.borrow_mut().insert(self.selected_word.clone().unwrap());
+        }
+        
         self.selected_word = None;
     } 
 }

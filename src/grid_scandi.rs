@@ -111,10 +111,12 @@ impl Grid for ScandiGrid {
                             }
 
                             let available_words_for_vertical_slot = Rc::clone(&word_collections_per_length[&(word_length_from_vertical as u32)]);
-                            // let adjusted_vertical_idx = if at_end_of_height { vertical_idx + 1 } else { vertical_idx }; 
+                            let adjusted_vertical_idx = if at_end_of_height { vertical_idx + 1 } else { vertical_idx }; 
 
                             let vertical_slot = match slot_direction_for_vertical {
                                 SlotDirection::DownOnRightSide => 
+                                {
+                                    println!("Slot to be constructed for clue cell: {}, {}", (adjusted_vertical_idx - word_length_from_vertical as u32), horizontal_idx - 1);
                                     Slot::new(
                                         slot_id,
                                         // word_length_from_vertical as u32, 
@@ -122,8 +124,11 @@ impl Grid for ScandiGrid {
                                         // Rc::clone(&(self.layout[(adjusted_vertical_idx - word_length_from_vertical as u32) as usize][(horizontal_idx - 1) as usize])), 
                                         vertical_slot_cells, 
                                         // slot_direction_for_vertical
-                                    ),
-                                SlotDirection::Down => 
+                                    )
+                                },
+                                SlotDirection::Down =>
+                                {
+                                    println!("Slot to be constructed for clue cell: {}, {}", (adjusted_vertical_idx - word_length_from_vertical as u32 - 1), horizontal_idx); 
                                     Slot::new(
                                         slot_id,
                                         // word_length_from_vertical as u32, 
@@ -131,10 +136,12 @@ impl Grid for ScandiGrid {
                                         // Rc::clone(&(self.layout[(adjusted_vertical_idx - word_length_from_vertical as u32 - 1) as usize][horizontal_idx as usize])), 
                                         vertical_slot_cells, 
                                         // slot_direction_for_vertical
-                                    ),
+                                    )
+                                }
                                 _ => panic!("Impossible clue cell placement.")
                             };
 
+                            println!("1. Constructed slot {}", vertical_slot.get_slot_id());
                             self.word_slots.push(vertical_slot);
                             slot_id += 1;
                         }
@@ -153,10 +160,12 @@ impl Grid for ScandiGrid {
                             }
 
                             let available_words_for_horizontal_slot = Rc::clone(&word_collections_per_length[&(word_length_from_horizontal as u32)]);
-                            // let adjusted_horizontal_idx = if at_end_of_width { horizontal_idx + 1 } else { horizontal_idx }; 
+                            let adjusted_horizontal_idx = if at_end_of_width { horizontal_idx + 1 } else { horizontal_idx }; 
 
                             let horizontal_slot = match slot_direction_for_horizontal {
                                 SlotDirection::RightOnBottomSide => 
+                                {
+                                    println!("Slot to be constructed for clue cell: {}, {}", (vertical_idx - 1), (adjusted_horizontal_idx - word_length_from_horizontal as u32));
                                     Slot::new(
                                         slot_id,
                                         // word_length_from_horizontal as u32, 
@@ -164,8 +173,11 @@ impl Grid for ScandiGrid {
                                         // Rc::clone(&(self.layout[(vertical_idx - 1) as usize][(adjusted_horizontal_idx - word_length_from_horizontal as u32) as usize])), 
                                         horizontal_slot_cells, 
                                         // slot_direction_for_horizontal
-                                    ),
-                                SlotDirection::Right => 
+                                    )
+                                },
+                                SlotDirection::Right =>
+                                {
+                                    println!("Slot to be constructed for clue cell: {}, {}", (vertical_idx), (adjusted_horizontal_idx - word_length_from_horizontal as u32 - 1)); 
                                     Slot::new(
                                         slot_id,
                                         // word_length_from_horizontal as u32, 
@@ -173,10 +185,12 @@ impl Grid for ScandiGrid {
                                         // Rc::clone(&(self.layout[vertical_idx as usize][(adjusted_horizontal_idx - word_length_from_horizontal as u32 - 1) as usize])), 
                                         horizontal_slot_cells, 
                                         // slot_direction_for_horizontal
-                                    ),
+                                    )
+                                }
                                 _ => panic!("Impossible clue cell placement.")
                             };
 
+                            println!("2. Constructed slot {}", horizontal_slot.get_slot_id());
                             self.word_slots.push(horizontal_slot);
                             slot_id += 1;
                         }
@@ -189,6 +203,7 @@ impl Grid for ScandiGrid {
 
         let mut idx_to_add_to_stack = 0;
         let mut slot_stack : Vec<u32> = Vec::new();
+        // let mut already_tried_backtrackings_per_slot : HashMap<u32, BTreeSet<u32>> = HashMap::new();
 
         slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
         idx_to_add_to_stack += 1;
@@ -196,21 +211,44 @@ impl Grid for ScandiGrid {
         while !slot_stack.is_empty() {
 
             let curr_slot_id = slot_stack.pop().unwrap();
+            println!("Trying slot id: {}", curr_slot_id);
             
-            if let Err(crossing_ids) = self.try_word_allocation(curr_slot_id) {
-
-                for crossing_id in crossing_ids {
-                    let mut crossing_slot = self.get_slot(crossing_id);
-                    crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
-
-                    let secondary_crossing_ids = crossing_slot.unwrap().get_crossing_slot_ids();
-                    for id in secondary_crossing_ids {
-                        let secondary_crossing_slot = self.get_slot(id);
-                        secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
-                    }
-
-                    slot_stack.push(crossing_id);
+            if let Err(crossings) = self.try_word_allocation(curr_slot_id) 
+            {
+                if crossings.is_empty() 
+                {
+                    println!("Found empty crossing_id set.");
+                    return Err(LayoutError::NoPossibleDomainAfterRecursion);
                 }
+
+                println!("Pushing back slot id {}", curr_slot_id);
+                slot_stack.push(curr_slot_id);
+
+                // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
+
+                let crossing_ids : BTreeSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
+                // let mut candidates : BTreeSet<&u32> = crossing_ids.difference(already_tried).collect();
+                // if candidates.is_empty() 
+                // {
+                //     already_tried.clear();
+                //     candidates = crossing_ids.iter().collect();
+                // }
+
+                let crossing_id = *crossing_ids.last().unwrap();
+                let mut crossing_slot = self.get_slot(crossing_id);
+                crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
+
+                let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
+                for (_, id) in secondary_crossing_ids 
+                {
+                    let secondary_crossing_slot = self.get_slot(id);
+                    secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
+                }
+
+                // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
+
+                println!("Pushing slot id {} in stack", crossing_id);
+                slot_stack.push(crossing_id);
             }
             else if idx_to_add_to_stack < self.word_slots.len() && !self.word_slots[idx_to_add_to_stack].has_placed_word()
             {
@@ -235,33 +273,40 @@ impl Grid for ScandiGrid {
 
 impl ScandiGrid {
 
-    fn try_word_allocation(&mut self, slot_id: u32) -> Result<(), BTreeSet<u32>> 
+    fn try_word_allocation(&mut self, slot_id: u32) -> Result<(), BTreeSet<(u32, u32)>> 
     {
-        let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossing_slot_ids();
-    
+        let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
+        let mut already_attempted_words = BTreeSet::new();
+
         'selections: loop 
         {
             let nominated_word = 
             {
                 let slot = self.get_slot(slot_id).unwrap();
-                slot.nominate_word().or(Err(slot_crossing_ids.clone()))?
+                slot.nominate_word(&already_attempted_words).or(Err(slot_crossing_ids.clone()))?
             };
 
-            for crossing_id in &slot_crossing_ids 
+            println!("Crossing ids are: {:?}", slot_crossing_ids);
+            for (idx, crossing_id) in &slot_crossing_ids 
             {
+                println!("Iterating over ids");
                 let crossing_slot = self.get_slot(*crossing_id).unwrap();
                 if crossing_slot.has_placed_word() 
                 {
-                    continue;
+                    crossing_slot.find_temporary_unsuitable_words(slot_id, &nominated_word, *idx);
                 }
-                else if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word)
+                else if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word, *idx)
                 {
+                    // println!("Crossing slot {} did not have possibilities remaining.", crossing_id);
+                    already_attempted_words.insert(nominated_word);
                     continue 'selections;
                 }
             }
+
+            println!("In word allocation for slot id {}, chosen word is {}", slot_id, nominated_word);
         
             self.get_slot(slot_id).unwrap().place_nominated_word(nominated_word);
-            for crossing_id in slot_crossing_ids 
+            for (_, crossing_id) in slot_crossing_ids 
             {
                 let crossing_slot = self.get_slot(crossing_id);
                 crossing_slot.unwrap().apply_restrictions(slot_id);
