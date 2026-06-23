@@ -38,6 +38,7 @@ pub struct ScandiGrid {
     height: u32,
     layout: Vec<Vec<Rc<RefCell<GridCell>>>>,
     clues_placed: u32,
+    words_placed: BTreeSet<String>,
     num_cells_accessed: u32,
     word_slots: Vec<Slot>
 }
@@ -58,10 +59,10 @@ impl Grid for ScandiGrid {
         
         let num_cells_accessed = 0;
         let clues_placed = 0;
-
+        let words_placed = BTreeSet::new();
         let word_slots = Vec::new();
 
-        Self { width, height, layout, clues_placed, num_cells_accessed, word_slots }
+        Self { width, height, layout, clues_placed, words_placed, num_cells_accessed, word_slots }
     }
 
     fn construct(&mut self) -> Result<(), LayoutError> {
@@ -201,15 +202,14 @@ impl Grid for ScandiGrid {
 
         self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
 
-        let mut idx_to_add_to_stack = 0;
-        let mut slot_stack : Vec<u32> = Vec::new();
         // let mut already_tried_backtrackings_per_slot : HashMap<u32, BTreeSet<u32>> = HashMap::new();
+        let mut slot_stack : Vec<u32> = Vec::new();
+        for idx_to_add_to_stack in 0..self.word_slots.len() {
+            slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
+        }
 
-        slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
-        idx_to_add_to_stack += 1;
-
-        while !slot_stack.is_empty() {
-
+        while !slot_stack.is_empty() 
+        {
             let curr_slot_id = slot_stack.pop().unwrap();
             println!("Trying slot id: {}", curr_slot_id);
             
@@ -234,13 +234,14 @@ impl Grid for ScandiGrid {
                 //     candidates = crossing_ids.iter().collect();
                 // }
 
-                let crossing_id = *crossing_ids.last().unwrap();
+                let crossing_id = *crossing_ids.iter().filter(|id| { let slot = self.get_slot(**id); slot.unwrap().has_placed_word() }).last().unwrap();
                 let mut crossing_slot = self.get_slot(crossing_id);
                 crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
 
                 let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
                 for (_, id) in secondary_crossing_ids 
                 {
+                    println!("Removing restrictions for secondary crossing id {}", id);
                     let secondary_crossing_slot = self.get_slot(id);
                     secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
                 }
@@ -250,11 +251,6 @@ impl Grid for ScandiGrid {
                 println!("Pushing slot id {} in stack", crossing_id);
                 slot_stack.push(crossing_id);
             }
-            else if idx_to_add_to_stack < self.word_slots.len() && !self.word_slots[idx_to_add_to_stack].has_placed_word()
-            {
-                slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id());
-                idx_to_add_to_stack += 1; 
-            } 
         }
 
         Ok(())
@@ -291,21 +287,22 @@ impl ScandiGrid {
             {
                 println!("Iterating over ids");
                 let crossing_slot = self.get_slot(*crossing_id).unwrap();
-                if crossing_slot.has_placed_word() 
+
+                if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word, *idx) 
                 {
-                    crossing_slot.find_temporary_unsuitable_words(slot_id, &nominated_word, *idx);
-                }
-                else if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word, *idx)
-                {
-                    // println!("Crossing slot {} did not have possibilities remaining.", crossing_id);
+                    println!("Crossing slot {} did not have possibilities remaining.", crossing_id);
                     already_attempted_words.insert(nominated_word);
                     continue 'selections;
                 }
+
+                crossing_slot.determine_unsuitable_words_due_crossing_slot(slot_id, &nominated_word, *idx);
             }
 
             println!("In word allocation for slot id {}, chosen word is {}", slot_id, nominated_word);
         
+            self.words_placed.insert(nominated_word.clone());
             self.get_slot(slot_id).unwrap().place_nominated_word(nominated_word);
+
             for (_, crossing_id) in slot_crossing_ids 
             {
                 let crossing_slot = self.get_slot(crossing_id);

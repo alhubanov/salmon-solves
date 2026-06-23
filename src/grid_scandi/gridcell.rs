@@ -68,31 +68,42 @@ impl GridCell {
     }
 
     pub fn print(&self) -> () { 
+
+        let mut count_printed = 0;
         if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::Down)) {
             print!("|");
+            count_printed += 1;
         }
         
         if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::DownOnRightSide)) {
             print!("]");
+            count_printed += 1;
         }
         
         if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::Right)) {
             print!("-");
+            count_printed += 1;
         }
         
         if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::RightOnBottomSide)) {
             print!("[");
+            count_printed += 1;
         }
         
         if self.assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Letter)) {
             match &self.cell {
-                None => print!("_ "),
-                Some(CellType::Letter(letter)) => print!("{} ", letter.get_cell_value()),
+                None => print!("_"),
+                Some(CellType::Letter(letter)) => print!("{}", letter.get_cell_value()),
                 _ => print!("0 ")
             }
+
+            count_printed += 1;
         }
 
         print!(" ");
+        if count_printed == 1 {
+            print!(" ");
+        }
     }
 
     pub fn assign_clue_state_randomly(&mut self, rng: &mut ThreadRng, previously_assigned_states: &BTreeSet<PossibleCellState>) -> Option<PossibleCellState> {
