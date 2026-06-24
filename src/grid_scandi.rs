@@ -99,105 +99,12 @@ impl Grid for ScandiGrid {
 
                 if !on_first_row && !on_first_col && (encountered_clue_cell || at_end_of_grid) 
                 {
-                    if encountered_clue_cell || at_end_of_height 
-                    {
-                        let consider_last_cell = !encountered_clue_cell;
-                        let (word_length_from_vertical, slot_direction_for_vertical, vertical_slot_cells) = 
-                            self.get_vertical_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(slot_id));
-
-                        // Only create a slot if the current clue is not adjacent to another clue
-                        if word_length_from_vertical != 0 {
-
-                            if !word_collections_per_length.contains_key(&(word_length_from_vertical as u32)) {
-                                // TODO: backtrack here instead of panicking
-                                panic!("1: Cannot fill slot at all!");
-                            }
-
-                            let available_words_for_vertical_slot = Rc::clone(&word_collections_per_length[&(word_length_from_vertical as u32)]);
-                            let adjusted_vertical_idx = if at_end_of_height { vertical_idx + 1 } else { vertical_idx }; 
-
-                            let vertical_slot = match slot_direction_for_vertical {
-                                SlotDirection::DownOnRightSide => 
-                                {
-                                    println!("Slot to be constructed for clue cell: {}, {}", (adjusted_vertical_idx - word_length_from_vertical as u32), horizontal_idx - 1);
-                                    Slot::new(
-                                        slot_id,
-                                        // word_length_from_vertical as u32, 
-                                        Rc::clone(&available_words_for_vertical_slot), 
-                                        // Rc::clone(&(self.layout[(adjusted_vertical_idx - word_length_from_vertical as u32) as usize][(horizontal_idx - 1) as usize])), 
-                                        vertical_slot_cells, 
-                                        // slot_direction_for_vertical
-                                    )
-                                },
-                                SlotDirection::Down =>
-                                {
-                                    println!("Slot to be constructed for clue cell: {}, {}", (adjusted_vertical_idx - word_length_from_vertical as u32 - 1), horizontal_idx); 
-                                    Slot::new(
-                                        slot_id,
-                                        // word_length_from_vertical as u32, 
-                                        Rc::clone(&available_words_for_vertical_slot), 
-                                        // Rc::clone(&(self.layout[(adjusted_vertical_idx - word_length_from_vertical as u32 - 1) as usize][horizontal_idx as usize])), 
-                                        vertical_slot_cells, 
-                                        // slot_direction_for_vertical
-                                    )
-                                }
-                                _ => panic!("Impossible clue cell placement.")
-                            };
-
-                            println!("1. Constructed slot {}", vertical_slot.get_slot_id());
-                            self.word_slots.push(vertical_slot);
-                            slot_id += 1;
-                        }
+                    if encountered_clue_cell || at_end_of_height {
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, &word_collections_per_length, encountered_clue_cell, "vertical");
                     }
 
-                    if encountered_clue_cell || at_end_of_width 
-                    {
-                        let consider_last_cell = !encountered_clue_cell;
-                        let (word_length_from_horizontal, slot_direction_for_horizontal, horizontal_slot_cells) = 
-                            self.get_horizontal_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(slot_id));
-
-                        if word_length_from_horizontal != 0 
-                        {
-                            if !word_collections_per_length.contains_key(&(word_length_from_horizontal as u32)) {
-                                // TODO: backtrack here instead of panicking
-                                panic!("2: Cannot fill slot at all.");
-                            }
-
-                            let available_words_for_horizontal_slot = Rc::clone(&word_collections_per_length[&(word_length_from_horizontal as u32)]);
-                            let adjusted_horizontal_idx = if at_end_of_width { horizontal_idx + 1 } else { horizontal_idx }; 
-
-                            let horizontal_slot = match slot_direction_for_horizontal {
-                                SlotDirection::RightOnBottomSide => 
-                                {
-                                    println!("Slot to be constructed for clue cell: {}, {}", (vertical_idx - 1), (adjusted_horizontal_idx - word_length_from_horizontal as u32));
-                                    Slot::new(
-                                        slot_id,
-                                        // word_length_from_horizontal as u32, 
-                                        Rc::clone(&available_words_for_horizontal_slot), 
-                                        // Rc::clone(&(self.layout[(vertical_idx - 1) as usize][(adjusted_horizontal_idx - word_length_from_horizontal as u32) as usize])), 
-                                        horizontal_slot_cells, 
-                                        // slot_direction_for_horizontal
-                                    )
-                                },
-                                SlotDirection::Right =>
-                                {
-                                    println!("Slot to be constructed for clue cell: {}, {}", (vertical_idx), (adjusted_horizontal_idx - word_length_from_horizontal as u32 - 1)); 
-                                    Slot::new(
-                                        slot_id,
-                                        // word_length_from_horizontal as u32, 
-                                        Rc::clone(&available_words_for_horizontal_slot),
-                                        // Rc::clone(&(self.layout[vertical_idx as usize][(adjusted_horizontal_idx - word_length_from_horizontal as u32 - 1) as usize])), 
-                                        horizontal_slot_cells, 
-                                        // slot_direction_for_horizontal
-                                    )
-                                }
-                                _ => panic!("Impossible clue cell placement.")
-                            };
-
-                            println!("2. Constructed slot {}", horizontal_slot.get_slot_id());
-                            self.word_slots.push(horizontal_slot);
-                            slot_id += 1;
-                        }
+                    if encountered_clue_cell || at_end_of_width {
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, &word_collections_per_length, encountered_clue_cell, "horizontal");
                     }
                 }
             }
@@ -289,25 +196,29 @@ impl ScandiGrid {
         None
     }
 
-    fn get_vertical_slot_attributes(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>) -> (i32, SlotDirection, Vec<Rc<RefCell<GridCell>>>) {
+    fn get_vertical_slot_attributes(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>) -> (i32, Vec<Rc<RefCell<GridCell>>>) {
 
         let mut slot_count = if end_of_grid { 0 } else { -1 };
         let mut curr_vertical_idx = vertical_idx;
 
         let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
 
-        let (vertical_word_len, slot_direction) = loop 
+        let vertical_word_len = loop 
         {
-            if curr_vertical_idx != vertical_idx && self.layout[curr_vertical_idx as usize][horizontal_idx as usize].borrow().is_clue() {
-                break (slot_count, SlotDirection::Down);
-            } else if curr_vertical_idx == 0 {
+            if curr_vertical_idx != vertical_idx && self.layout[curr_vertical_idx as usize][horizontal_idx as usize].borrow().is_clue() 
+            {
+                break slot_count;
+            } 
+            else if curr_vertical_idx == 0 
+            {
                 slot_count += 1;
                 self.layout[curr_vertical_idx as usize][horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
                 slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][horizontal_idx as usize]));
-                break (slot_count, SlotDirection::DownOnRightSide);
+                break slot_count;
             }
 
-            if slot_count >= 0 {
+            if slot_count >= 0 
+            {
                 self.layout[curr_vertical_idx as usize][horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
                 slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][horizontal_idx as usize]));
             }
@@ -318,26 +229,30 @@ impl ScandiGrid {
 
         slot_cells.reverse();
 
-        return (vertical_word_len, slot_direction, slot_cells);
+        return (vertical_word_len, slot_cells);
     }
 
-    fn get_horizontal_slot_attributes(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>) -> (i32, SlotDirection, Vec<Rc<RefCell<GridCell>>>) {
+    fn get_horizontal_slot_attributes(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>) -> (i32, Vec<Rc<RefCell<GridCell>>>) {
         let mut slot_count = if end_of_grid { 0 } else { -1 };
         let mut curr_horizontal_idx = horizontal_idx;
 
         let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
 
-        let (horizontal_word_len, slot_direction) = loop {
-            if curr_horizontal_idx != horizontal_idx && self.layout[vertical_idx as usize][curr_horizontal_idx as usize].borrow().is_clue() {
-                break (slot_count, SlotDirection::Right);
-            } else if curr_horizontal_idx == 0 {
+        let horizontal_word_len = loop {
+            if curr_horizontal_idx != horizontal_idx && self.layout[vertical_idx as usize][curr_horizontal_idx as usize].borrow().is_clue() 
+            {
+                break slot_count;
+            } 
+            else if curr_horizontal_idx == 0 
+            {
                 slot_count += 1;
                 self.layout[vertical_idx as usize][curr_horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
                 slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][curr_horizontal_idx as usize]));
-                break (slot_count, SlotDirection::RightOnBottomSide);
+                break slot_count;
             }
 
-            if slot_count >= 0 {
+            if slot_count >= 0 
+            {
                 self.layout[vertical_idx as usize][curr_horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
                 slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][curr_horizontal_idx as usize]));
             }
@@ -348,15 +263,59 @@ impl ScandiGrid {
 
         slot_cells.reverse();
 
-        return (horizontal_word_len, slot_direction, slot_cells);
+        return (horizontal_word_len, slot_cells);
     }
 
     fn get_max_slot_len_ending_at_curr_cell(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 
     {
-        let (vertical_word_len, _, _) = self.get_vertical_slot_attributes(vertical_idx, horizontal_idx, false, None);
-        let (horizontal_word_len, _, _) = self.get_horizontal_slot_attributes(vertical_idx, horizontal_idx, false, None);
+        let (vertical_word_len, _) = self.get_vertical_slot_attributes(vertical_idx, horizontal_idx, false, None);
+        let (horizontal_word_len, _) = self.get_horizontal_slot_attributes(vertical_idx, horizontal_idx, false, None);
 
         return max(vertical_word_len, horizontal_word_len);
+    }
+
+    fn create_slot(&mut self, 
+                    vertical_idx: u32, 
+                    horizontal_idx: u32, 
+                    slot_id: &mut u32, 
+                    word_collections_per_length : &HashMap<u32, Rc<RefCell<BTreeSet<String>>>>,
+                    encountered_clue_cell: bool,
+                    orientation: &str)  
+    {
+        let consider_last_cell = !encountered_clue_cell;
+        let (word_length, slot_cells) = 
+            if orientation == "vertical" 
+            {
+                self.get_vertical_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(*slot_id))
+            } 
+            else // orientation == "horizontal" 
+            {
+                self.get_horizontal_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(*slot_id))
+            };
+        
+        if word_length == 0 
+        {
+            return;
+        }
+
+        if !word_collections_per_length.contains_key(&(word_length as u32)) {
+            // TODO: backtrack here instead of panicking
+            panic!("Cannot fill slot at all.");
+        }
+
+        let available_words = Rc::clone(&word_collections_per_length[&(word_length as u32)]);
+        let slot = Slot::new(
+                    *slot_id,
+                    // word_length_from_vertical as u32, 
+                    Rc::clone(&available_words), 
+                    // Rc::clone(&(self.layout[(adjusted_vertical_idx - word_length_from_vertical as u32) as usize][(horizontal_idx - 1) as usize])), 
+                    slot_cells, 
+                    // slot_direction_for_vertical
+                );
+
+        println!("Constructed slot {}", slot.get_slot_id());
+        self.word_slots.push(slot);
+        *slot_id += 1;
     }
 
     fn fill_slot(&mut self, slot_id: u32) -> Result<(), BTreeSet<(u32, u32)>> 
