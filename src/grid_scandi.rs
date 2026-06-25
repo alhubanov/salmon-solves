@@ -162,7 +162,7 @@ impl ScandiGrid {
         return (word_len, slot_cells);
     }
 
-    fn get_max_slot_len_ending_at_curr_cell(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 
+    fn get_max_len(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 
     {
         let (vertical_word_len, _) = self.get_slot_attributes(vertical_idx, horizontal_idx, false, None, "vertical");
         let (horizontal_word_len, _) = self.get_slot_attributes(vertical_idx, horizontal_idx, false, None, "horizontal");
@@ -344,7 +344,7 @@ impl ScandiGrid {
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> 
     {
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
-        let current_word_len : i32 = self.get_max_slot_len_ending_at_curr_cell(vertical_idx, horizontal_idx);
+        let current_word_len : i32 = self.get_max_len(vertical_idx, horizontal_idx);
 
         let mut curr_cell = self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut();
         let mut rng = rand::rng();
