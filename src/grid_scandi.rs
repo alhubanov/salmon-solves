@@ -65,8 +65,8 @@ impl Grid for ScandiGrid {
         Self { width, height, layout, clues_placed, words_placed, num_cells_accessed, word_slots }
     }
 
-    fn construct(&mut self) -> Result<(), LayoutError> {
-
+    fn construct(&mut self) -> Result<(), LayoutError> 
+    {
         let mut word_collections_per_length : HashMap<u32, Rc<RefCell<BTreeSet<String>>>> = HashMap::new();
 
         let words_vec : Vec<&str> = WORDS.lines().collect();
@@ -79,90 +79,8 @@ impl Grid for ScandiGrid {
                 .insert(word.to_string());
         }
 
-        let mut slot_id : u32 = 0;
-
-        for vertical_idx in 0..self.height 
-        {
-            for horizontal_idx in 0..self.width 
-            {
-                let assigned_cell_states = self.set_cell_state_from_remaining_possibilities(vertical_idx, horizontal_idx);
-                if let Err(_) = self.restrict_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
-                    // backtrack
-                }
-
-                let at_end_of_height = vertical_idx == self.height - 1;
-                let at_end_of_width = horizontal_idx == self.width - 1;
-                let at_end_of_grid = at_end_of_height || at_end_of_width;
-                let on_first_row = vertical_idx == 0;
-                let on_first_col = horizontal_idx == 0;
-                let encountered_clue_cell = assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(_)));
-
-                if !on_first_row && !on_first_col && (encountered_clue_cell || at_end_of_grid) 
-                {
-                    if encountered_clue_cell || at_end_of_height {
-                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, &word_collections_per_length, encountered_clue_cell, "vertical");
-                    }
-
-                    if encountered_clue_cell || at_end_of_width {
-                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, &word_collections_per_length, encountered_clue_cell, "horizontal");
-                    }
-                }
-            }
-        }
-
-        self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
-
-        // let mut already_tried_backtrackings_per_slot : HashMap<u32, BTreeSet<u32>> = HashMap::new();
-        let mut slot_stack : Vec<u32> = Vec::new();
-        for idx_to_add_to_stack in 0..self.word_slots.len() 
-        {
-            slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
-        }
-
-        while !slot_stack.is_empty() 
-        {
-            let curr_slot_id = slot_stack.pop().unwrap();
-            println!("Trying slot id: {}", curr_slot_id);
-            
-            if let Err(crossings) = self.fill_slot(curr_slot_id) 
-            {
-                if crossings.is_empty() 
-                {
-                    println!("Found empty crossing_id set.");
-                    return Err(LayoutError::NoPossibleDomainAfterRecursion);
-                }
-
-                println!("Pushing back slot id {}", curr_slot_id);
-                slot_stack.push(curr_slot_id);
-
-                // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
-
-                let crossing_ids : BTreeSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
-                // let mut candidates : BTreeSet<&u32> = crossing_ids.difference(already_tried).collect();
-                // if candidates.is_empty() 
-                // {
-                //     already_tried.clear();
-                //     candidates = crossing_ids.iter().collect();
-                // }
-
-                let crossing_id = *crossing_ids.iter().filter(|id| { let slot = self.get_slot(**id); slot.unwrap().has_placed_word() }).last().unwrap();
-                let mut crossing_slot = self.get_slot(crossing_id);
-                crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
-
-                let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
-                for (_, id) in secondary_crossing_ids 
-                {
-                    println!("Removing restrictions for secondary crossing id {}", id);
-                    let secondary_crossing_slot = self.get_slot(id);
-                    secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
-                }
-
-                // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
-
-                println!("Pushing slot id {} in stack", crossing_id);
-                slot_stack.push(crossing_id);
-            }
-        }
+        self.create_all_slots(&word_collections_per_length);
+        self.fill_grid()?;
 
         Ok(())
     } 
@@ -293,10 +211,7 @@ impl ScandiGrid {
                 self.get_horizontal_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(*slot_id))
             };
         
-        if word_length == 0 
-        {
-            return;
-        }
+        if word_length == 0 { return; }
 
         if !word_collections_per_length.contains_key(&(word_length as u32)) {
             // TODO: backtrack here instead of panicking
@@ -316,6 +231,43 @@ impl ScandiGrid {
         println!("Constructed slot {}", slot.get_slot_id());
         self.word_slots.push(slot);
         *slot_id += 1;
+    }
+
+    fn create_all_slots(&mut self, word_collections_per_length : &HashMap<u32, Rc<RefCell<BTreeSet<String>>>>) -> () 
+    {
+        let mut slot_id : u32 = 0;
+        for vertical_idx in 0..self.height 
+        {
+            for horizontal_idx in 0..self.width 
+            {
+                let assigned_cell_states = self.set_cell_state_from_remaining_possibilities(vertical_idx, horizontal_idx);
+                if let Err(_) = self.restrict_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
+                    // backtrack
+                }
+
+                let at_end_of_height = vertical_idx == self.height - 1;
+                let at_end_of_width = horizontal_idx == self.width - 1;
+                let at_end_of_grid = at_end_of_height || at_end_of_width;
+                let on_first_row = vertical_idx == 0;
+                let on_first_col = horizontal_idx == 0;
+                let encountered_clue_cell = assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Clue(_)));
+
+                if !on_first_row && !on_first_col && (encountered_clue_cell || at_end_of_grid) 
+                {
+                    if encountered_clue_cell || at_end_of_height 
+                    {
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, &word_collections_per_length, encountered_clue_cell, "vertical");
+                    }
+
+                    if encountered_clue_cell || at_end_of_width 
+                    {
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, &word_collections_per_length, encountered_clue_cell, "horizontal");
+                    }
+                }
+            }
+        }
+
+        self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
     }
 
     fn fill_slot(&mut self, slot_id: u32) -> Result<(), BTreeSet<(u32, u32)>> 
@@ -360,6 +312,63 @@ impl ScandiGrid {
         
             return Ok(());
         };
+    }
+
+    fn fill_grid(&mut self) -> Result<(), LayoutError> 
+    {
+        // let mut already_tried_backtrackings_per_slot : HashMap<u32, BTreeSet<u32>> = HashMap::new();
+        let mut slot_stack : Vec<u32> = Vec::new();
+        for idx_to_add_to_stack in 0..self.word_slots.len() 
+        {
+            slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
+        }
+
+        while !slot_stack.is_empty() 
+        {
+            let curr_slot_id = slot_stack.pop().unwrap();
+            println!("Trying slot id: {}", curr_slot_id);
+            
+            if let Err(crossings) = self.fill_slot(curr_slot_id) 
+            {
+                if crossings.is_empty() 
+                {
+                    println!("Found empty crossing_id set.");
+                    return Err(LayoutError::NoPossibleDomainAfterRecursion);
+                }
+
+                println!("Pushing back slot id {}", curr_slot_id);
+                slot_stack.push(curr_slot_id);
+
+                // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
+
+                let crossing_ids : BTreeSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
+                // let mut candidates : BTreeSet<&u32> = crossing_ids.difference(already_tried).collect();
+                // if candidates.is_empty() 
+                // {
+                //     already_tried.clear();
+                //     candidates = crossing_ids.iter().collect();
+                // }
+
+                let crossing_id = *crossing_ids.iter().filter(|id| { let slot = self.get_slot(**id); slot.unwrap().has_placed_word() }).last().unwrap();
+                let mut crossing_slot = self.get_slot(crossing_id);
+                crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
+
+                let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
+                for (_, id) in secondary_crossing_ids 
+                {
+                    println!("Removing restrictions for secondary crossing id {}", id);
+                    let secondary_crossing_slot = self.get_slot(id);
+                    secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
+                }
+
+                // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
+
+                println!("Pushing slot id {} in stack", crossing_id);
+                slot_stack.push(crossing_id);
+            }
+        }
+
+        Ok(())
     }
 
     fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> {
