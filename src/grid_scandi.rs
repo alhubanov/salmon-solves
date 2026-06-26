@@ -237,7 +237,7 @@ impl ScandiGrid {
         {
             for horizontal_idx in 0..self.width 
             {
-                let assigned_cell_states = self.set_cell_state_from_remaining_possibilities(vertical_idx, horizontal_idx);
+                let assigned_cell_states = self.set_cell_state(vertical_idx, horizontal_idx);
                 if let Err(_) = self.restrict_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
                     // backtrack
                 }
@@ -368,7 +368,7 @@ impl ScandiGrid {
         Ok(())
     }
 
-    fn set_cell_state_from_remaining_possibilities(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> 
+    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32) -> BTreeSet<PossibleCellState> 
     {
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
         let current_word_len : i32 = self.get_max_len(vertical_idx, horizontal_idx);
