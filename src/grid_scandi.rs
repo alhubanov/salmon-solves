@@ -115,13 +115,12 @@ impl ScandiGrid {
         None
     }
 
-    fn get_slot_attributes(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>, orientation: &str) -> (i32, Vec<Rc<RefCell<GridCell>>>) 
+    fn get_len(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, orientation: &str) -> i32 
     {
         let mut slot_count = if end_of_grid { 0 } else { -1 };
         let mut curr_vertical_idx = vertical_idx;
         let mut curr_horizontal_idx = horizontal_idx;
 
-        let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
         let word_len = loop 
         {
             let (active_orientation_idx, baseline_orientation_idx) = 
@@ -141,33 +140,49 @@ impl ScandiGrid {
             else if active_orientation_idx == 0 
             {
                 slot_count += 1;
-                self.layout[curr_vertical_idx as usize][curr_horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
-                slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][curr_horizontal_idx as usize]));   
                 break slot_count; 
             }
 
-            if slot_count >= 0
-            {
-                self.layout[curr_vertical_idx as usize][curr_horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
-                slot_cells.push(Rc::clone(&self.layout[curr_vertical_idx as usize][curr_horizontal_idx as usize]));
-            }
-
             slot_count += 1;
-
             if orientation == "vertical" { curr_vertical_idx -= 1; } else { curr_horizontal_idx -= 1; }
         };
 
-        slot_cells.reverse();
-
-        return (word_len, slot_cells);
+        return word_len;
     }
 
     fn get_max_len(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 
     {
-        let (vertical_word_len, _) = self.get_slot_attributes(vertical_idx, horizontal_idx, false, None, "vertical");
-        let (horizontal_word_len, _) = self.get_slot_attributes(vertical_idx, horizontal_idx, false, None, "horizontal");
+        let vertical_word_len = self.get_len(vertical_idx, horizontal_idx, false, "vertical");
+        let horizontal_word_len = self.get_len(vertical_idx, horizontal_idx, false, "horizontal");
 
         return max(vertical_word_len, horizontal_word_len);
+    }
+
+    fn get_slot_attributes(&self, mut vertical_idx: u32, mut horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>, orientation: &str) -> (i32, Vec<Rc<RefCell<GridCell>>>) 
+    {
+        let start_position = if end_of_grid { 0 } else { -1 };
+
+        let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
+        let word_len = self.get_len(vertical_idx, horizontal_idx, end_of_grid, orientation);
+
+        for idx in start_position..word_len 
+        {
+            if idx == -1 
+            {
+                if orientation == "vertical" { vertical_idx -= 1; } else { horizontal_idx -= 1; } 
+                continue; 
+            }
+
+            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
+            slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][horizontal_idx as usize]));  
+
+            if idx < word_len - 1 {
+                if orientation == "vertical" { vertical_idx -= 1; } else { horizontal_idx -= 1; } 
+            }
+        }
+
+        slot_cells.reverse();
+        return (word_len, slot_cells);
     }
 
     fn create_slot(&mut self, 
