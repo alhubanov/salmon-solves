@@ -377,6 +377,9 @@ impl ScandiGrid {
         let mut rng = rand::rng();
         let assigned_states : BTreeSet<PossibleCellState> = BTreeSet::new();
 
+        let is_first_row = vertical_idx == 0;
+        let is_first_col = horizontal_idx == 0;
+
         if curr_cell.can_still_be_clue() && curr_cell.can_still_be_letter() 
         {
             // the ratio betwee placed clues and processed cells, not considering the first row and first column
@@ -396,7 +399,7 @@ impl ScandiGrid {
             {
                 self.clues_placed += 1;
                 self.num_cells_accessed += 1;
-                return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, false);
+                return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, is_first_row, is_first_col,false);
             } 
             else 
             {
@@ -407,13 +410,13 @@ impl ScandiGrid {
         else if (horizontal_idx == 0 || vertical_idx == 0) && curr_cell.can_still_be_clue() 
         {
             // self.clues_placed += 1;
-            return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, true);
+            return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, is_first_row, is_first_col,true);
         }
         else if curr_cell.can_still_be_clue() 
         {
             self.num_cells_accessed += 1;
             self.clues_placed += 1;
-            return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, false);
+            return Self::assign_clue_states(&mut *curr_cell, rng, assigned_states, is_first_row, is_first_col,false);
         } 
         else if curr_cell.can_still_be_letter() 
         {
@@ -433,14 +436,23 @@ impl ScandiGrid {
         return assigned_states;
     }
 
-    fn assign_clue_states(curr_cell: &mut GridCell, mut rng: ThreadRng, mut assigned_states: BTreeSet<PossibleCellState>, randomize: bool) -> BTreeSet<PossibleCellState> 
+    fn assign_clue_states(
+        curr_cell: &mut GridCell, 
+        mut rng: ThreadRng, 
+        mut assigned_states: BTreeSet<PossibleCellState>, 
+        is_first_row: bool, 
+        is_first_col: bool, 
+        randomize: bool) -> BTreeSet<PossibleCellState> 
     {
         let mut num_assigned_states = 0;
         let mut random_number: f32 = 0.0; // starts at 0.0 so at least one state is assigned
 
-        while num_assigned_states < 2 && random_number < constants::THRESHOLD_PROBABILITY_FOR_SECOND_CLUE_STATE {
-            match curr_cell.assign_clue_state_randomly(&mut rng, &assigned_states) {
-                Some(state) => {
+        while num_assigned_states < 2 && random_number < constants::THRESHOLD_PROBABILITY_FOR_SECOND_CLUE_STATE 
+        {
+            match curr_cell.assign_clue_state(&mut rng, &assigned_states, is_first_row, is_first_col) 
+            {
+                Some(state) => 
+                {
                     assigned_states.insert(state);
                     num_assigned_states += 1;
                     random_number = if randomize { rng.random() } else { 0.0 };

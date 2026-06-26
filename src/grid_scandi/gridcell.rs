@@ -67,8 +67,8 @@ impl GridCell {
         }
     }
 
-    pub fn print(&self) -> () { 
-
+    pub fn print(&self) -> () 
+    { 
         let mut count_printed = 0;
         if self.assigned_cell_states.contains(&PossibleCellState::Clue(SlotDirection::Down)) {
             print!("|");
@@ -106,19 +106,34 @@ impl GridCell {
         }
     }
 
-    pub fn assign_clue_state_randomly(&mut self, rng: &mut ThreadRng, previously_assigned_states: &BTreeSet<PossibleCellState>) -> Option<PossibleCellState> {
-
+    pub fn assign_clue_state(
+        &mut self, 
+        rng: &mut ThreadRng, 
+        previously_assigned_states: &BTreeSet<PossibleCellState>, 
+        is_first_row: bool, 
+        is_first_col: bool
+    ) -> Option<PossibleCellState> 
+    {
         // remove states that cannot be currently assigned
         let letter_state_removed = self.possible_remaining_cell_states.remove(&PossibleCellState::Letter);
         for assigned_state in previously_assigned_states {
             self.possible_remaining_cell_states.remove(&assigned_state);
         }
 
-        // assign a state randomly
-        let sampled_state = self.possible_remaining_cell_states
-                                .iter()
-                                .choose(rng)
-                                .cloned();
+        let is_top_left = is_first_row && is_first_col;
+
+        // assign a state randomly but ensure no "non-slots" arise
+        let sampled_state = if self.assigned_cell_states.is_empty() && !is_top_left && is_first_row && self.possible_remaining_cell_states.contains(&PossibleCellState::Clue(SlotDirection::Down))
+            {   
+                Some(PossibleCellState::Clue(SlotDirection::Down))
+            } 
+            else if self.assigned_cell_states.is_empty() && !is_top_left && is_first_col && self.possible_remaining_cell_states.contains(&PossibleCellState::Clue(SlotDirection::Right))
+            {
+                Some(PossibleCellState::Clue(SlotDirection::Right))
+            } 
+            else {
+                self.possible_remaining_cell_states.iter().choose(rng).cloned()
+            };
 
         if let None = sampled_state {
             return None;
