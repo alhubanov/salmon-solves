@@ -115,11 +115,13 @@ impl ScandiGrid {
         None
     }
 
-    fn get_len(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, orientation: &str) -> i32 
+    fn get_len(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, orientation: &str) -> Result<i32, LayoutError> 
     {
         let mut slot_count = if end_of_grid { 0 } else { -1 };
         let mut curr_vertical_idx = vertical_idx;
         let mut curr_horizontal_idx = horizontal_idx;
+
+        let clue_direction = if orientation == "vertical" { SlotDirection::Down } else { SlotDirection::Right };
 
         let word_len = loop 
         {
@@ -135,6 +137,10 @@ impl ScandiGrid {
             
             if active_orientation_idx != baseline_orientation_idx && self.layout[curr_vertical_idx as usize][curr_horizontal_idx as usize].borrow().is_clue()
             {
+                if !self.layout[curr_vertical_idx as usize][curr_horizontal_idx as usize].borrow().is_clue_of_type(clue_direction) 
+                {
+                    return Err(LayoutError::IsNotAValidSlot);
+                }
                 break slot_count;
             }
             else if active_orientation_idx == 0 
@@ -147,23 +153,23 @@ impl ScandiGrid {
             if orientation == "vertical" { curr_vertical_idx -= 1; } else { curr_horizontal_idx -= 1; }
         };
 
-        return word_len;
+        return Ok(word_len);
     }
 
     fn get_max_len(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 
     {
-        let vertical_word_len = self.get_len(vertical_idx, horizontal_idx, false, "vertical");
-        let horizontal_word_len = self.get_len(vertical_idx, horizontal_idx, false, "horizontal");
+        let vertical_word_len = self.get_len(vertical_idx, horizontal_idx, false, "vertical").unwrap_or(0);
+        let horizontal_word_len = self.get_len(vertical_idx, horizontal_idx, false, "horizontal").unwrap_or(0);
 
         return max(vertical_word_len, horizontal_word_len);
     }
 
-    fn get_slot_attributes(&self, mut vertical_idx: u32, mut horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>, orientation: &str) -> (i32, Vec<Rc<RefCell<GridCell>>>) 
+    fn get_slot_attributes(&self, mut vertical_idx: u32, mut horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>, orientation: &str) -> Result<(i32, Vec<Rc<RefCell<GridCell>>>), LayoutError> 
     {
         let start_position = if end_of_grid { 0 } else { -1 };
 
         let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
-        let word_len = self.get_len(vertical_idx, horizontal_idx, end_of_grid, orientation);
+        let word_len = self.get_len(vertical_idx, horizontal_idx, end_of_grid, orientation)?;
 
         for idx in start_position..word_len 
         {
@@ -182,7 +188,7 @@ impl ScandiGrid {
         }
 
         slot_cells.reverse();
-        return (word_len, slot_cells);
+        return Ok((word_len, slot_cells));
     }
 
     fn create_slot(&mut self, 
@@ -194,7 +200,13 @@ impl ScandiGrid {
                     orientation: &str)  
     {
         let consider_last_cell = !encountered_clue_cell;
-        let (word_length, slot_cells) = self.get_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(*slot_id), orientation);
+        let slot_attributes = self.get_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(*slot_id), orientation);
+
+        let (word_length, slot_cells) = match slot_attributes 
+        {
+            Ok((w, s)) => (w, s),
+            Err(_) => { return; } 
+        };
         
         if word_length == 0 { return; }
 

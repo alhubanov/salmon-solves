@@ -6,6 +6,7 @@ pub enum LayoutError {
     NoPossibleDomainAfterRecursion,
     NoPossibleDomain,
     CannotPlaceWord,
+    IsNotAValidSlot,
     // LowClueDensity,
     // HighClueDensity,
     // IsolatedLetter,
