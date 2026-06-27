@@ -21,7 +21,6 @@ pub enum SlotDirection {
     RightOnBottomSide
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Slot {
     slot_id: u32,
     slot_cells: Vec<Rc<RefCell<GridCell>>>,

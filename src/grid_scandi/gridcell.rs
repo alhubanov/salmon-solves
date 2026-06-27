@@ -17,7 +17,6 @@ pub enum PossibleCellState {
     Clue(SlotDirection)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct GridCell {
     pub cell: Option<CellType>,
     pub slot_ids: Option<BTreeSet<u32>>,
