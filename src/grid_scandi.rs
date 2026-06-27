@@ -283,15 +283,12 @@ impl ScandiGrid {
 
                 if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word, *idx) 
                 {
-                    println!("Crossing slot {} did not have possibilities remaining.", crossing_id);
                     already_attempted_words.insert(nominated_word);
                     continue 'selections;
                 }
 
                 crossing_slot.determine_unsuitable_words_due_crossing_slot(slot_id, &nominated_word, *idx);
             }
-
-            println!("In word allocation for slot id {}, chosen word is {}", slot_id, nominated_word);
         
             self.words_placed.insert(nominated_word.clone());
             self.get_slot(slot_id).unwrap().place_nominated_word(nominated_word);
@@ -318,7 +315,6 @@ impl ScandiGrid {
         while !slot_stack.is_empty() 
         {
             let curr_slot_id = slot_stack.pop().unwrap();
-            println!("Trying slot id: {}", curr_slot_id);
             
             if let Err(crossings) = self.fill_slot(curr_slot_id) 
             {

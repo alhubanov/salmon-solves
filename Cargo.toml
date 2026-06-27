@@ -13,3 +13,17 @@ getrandom = { version = "0.4", features = ["wasm_js"] }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+bench = false
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "criterion_benchmark"
+harness = false
+
+[[bin]]
+name = "crossy"
+path = "src/main.rs"
+bench = false
+

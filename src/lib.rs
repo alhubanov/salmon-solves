@@ -6,8 +6,9 @@ use crate::grid::Grid;
 use crate::grid::GenericGrid;
 
 mod grid;
-mod grid_scandi;
 mod grid_simple;
+pub mod grid_scandi;
+
 mod terminal_input_utilities;
 mod ui_input_utilities;
 
@@ -27,11 +28,12 @@ pub fn run() -> () {
     grid.print();
 }
 
+#[inline]
 pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32) -> T {
 
     let mut grid = T::initialize(width, height);
-    for idx in 0..10 {
-        println!("Attempt {}...", idx);
+    for _ in 0..10 
+    {
         if let Ok(_) = grid.construct() {
             break;
         }
