@@ -223,7 +223,6 @@ impl ScandiGrid {
                     slot_cells
                 );
 
-        println!("Constructed slot {}", slot.get_slot_id());
         self.word_slots.push(slot);
         *slot_id += 1;
     }
@@ -278,7 +277,6 @@ impl ScandiGrid {
                 slot.nominate_word(&already_attempted_words).or(Err(slot_crossing_ids.clone()))?
             };
 
-            println!("Crossing ids are: {:?}", slot_crossing_ids);
             for (idx, crossing_id) in &slot_crossing_ids 
             {
                 let crossing_slot = self.get_slot(*crossing_id).unwrap();
@@ -326,11 +324,9 @@ impl ScandiGrid {
             {
                 if crossings.is_empty() 
                 {
-                    println!("Found empty crossing_id set.");
                     return Err(LayoutError::NoPossibleDomainAfterRecursion);
                 }
 
-                println!("Pushing back slot id {}", curr_slot_id);
                 slot_stack.push(curr_slot_id);
 
                 // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
@@ -350,14 +346,12 @@ impl ScandiGrid {
                 let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
                 for (_, id) in secondary_crossing_ids 
                 {
-                    println!("Removing restrictions for secondary crossing id {}", id);
                     let secondary_crossing_slot = self.get_slot(id);
                     secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
                 }
 
                 // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
 
-                println!("Pushing slot id {} in stack", crossing_id);
                 slot_stack.push(crossing_id);
             }
         }
