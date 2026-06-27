@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::collections::{BTreeSet};
+use std::collections::{HashSet};
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
 
@@ -13,7 +13,7 @@ use crate::grid_scandi::gridcell::GridCell;
 use crate::grid_scandi::gridcell::CellType;
 use crate::grid_scandi::letter;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Copy, Clone, Hash)]
 pub enum SlotDirection {
     Down,
     DownOnRightSide,
@@ -26,16 +26,16 @@ pub struct Slot {
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
     // associated_clue_cell: Rc<RefCell<GridCell>>
     selected_word: Option<String>,
-    suitable_words: Rc<RefCell<BTreeSet<String>>>,
-    suitable_discarded_words: BTreeSet<String>, 
-    unsuitable_words_per_crossing: BTreeMap<u32, BTreeSet<String>>,
-    latest_unsuitable_words: BTreeSet<String>
+    suitable_words: Rc<RefCell<HashSet<String>>>,
+    suitable_discarded_words: HashSet<String>, 
+    unsuitable_words_per_crossing: BTreeMap<u32, HashSet<String>>,
+    latest_unsuitable_words: HashSet<String>
 }
 
 impl Slot {
     pub fn new(
         slot_id: u32,
-        suitable_words: Rc<RefCell<BTreeSet<String>>>,
+        suitable_words: Rc<RefCell<HashSet<String>>>,
         slot_cells: Vec<Rc<RefCell<GridCell>>>
         // associated_clue_cell: Rc<RefCell<GridCell>>,
         ) 
@@ -43,9 +43,9 @@ impl Slot {
     {
 
         let selected_word = None;
-        let suitable_discarded_words = BTreeSet::new();
+        let suitable_discarded_words = HashSet::new();
         let unsuitable_words_per_crossing = BTreeMap::new();
-        let latest_unsuitable_words = BTreeSet::new();
+        let latest_unsuitable_words = HashSet::new();
 
         Self { 
             slot_id, 
@@ -59,7 +59,7 @@ impl Slot {
         }
     }
 
-    pub fn get_suitable_word_set(&self) -> Ref<'_, BTreeSet<String>> 
+    pub fn get_suitable_word_set(&self) -> Ref<'_, HashSet<String>> 
     {
         self.suitable_words.borrow()
     }
@@ -69,10 +69,10 @@ impl Slot {
         self.slot_id
     }
 
-    pub fn get_crossings(&self) -> BTreeSet<(u32, u32)> 
+    pub fn get_crossings(&self) -> HashSet<(u32, u32)> 
     {
 
-        let mut crossing_slot_ids : BTreeSet<(u32, u32)> = BTreeSet::new();
+        let mut crossing_slot_ids : HashSet<(u32, u32)> = HashSet::new();
         for (idx, cell) in self.slot_cells.iter().enumerate() 
         {
             let cell_foreign_crossing_id : Option<u32> = cell.borrow().slot_ids.as_ref().unwrap().iter().find(|elem| *elem != &self.slot_id).copied();
@@ -90,7 +90,7 @@ impl Slot {
         self.selected_word.is_some()
     }
 
-    pub fn nominate_word(&mut self, already_attempted_words: &BTreeSet<String>) -> Result<String, LayoutError> 
+    pub fn nominate_word(&mut self, already_attempted_words: &HashSet<String>) -> Result<String, LayoutError> 
     {    
         let mut rng = rand::rng();
         let borrowed_suitable_words = self.suitable_words.borrow();
@@ -147,7 +147,7 @@ impl Slot {
         };
     }
 
-    fn get_num_unsuitable_words_from_remaining(&self, suitable_words_left: &BTreeSet<&String>, required: &Vec<(usize, u8)>) -> u32 
+    fn get_num_unsuitable_words_from_remaining(&self, suitable_words_left: &HashSet<&String>, required: &Vec<(usize, u8)>) -> u32 
     {
         let mut count = 0;
         for word in suitable_words_left.iter() 
@@ -166,7 +166,7 @@ impl Slot {
     pub fn has_possibilities_remaining(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
     {
         let suitable_words = self.suitable_words.borrow(); 
-        let suitable_words_left : BTreeSet<&String> = if let None = self.selected_word 
+        let suitable_words_left : HashSet<&String> = if let None = self.selected_word 
         {
             suitable_words.iter()
                         .filter(|w| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*w)))

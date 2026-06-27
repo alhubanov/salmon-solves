@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet};
+use std::{collections::HashSet};
 use serde::{Serialize, Deserialize};
 use wasm_bindgen::prelude::*;
 
@@ -17,7 +17,7 @@ pub enum Difficulty {
     Expert
 }
 
-#[derive(Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[wasm_bindgen]
 pub enum Theme {
     ArtsAndCulture,
@@ -36,7 +36,7 @@ pub enum Theme {
 pub struct UserSettings {
     grid_type: GridType,
     difficulty_level: Difficulty,
-    themes: BTreeSet<Theme>
+    themes: HashSet<Theme>
 }
 
 impl UserSettings {

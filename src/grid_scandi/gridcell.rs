@@ -1,4 +1,4 @@
-use std::collections::{BTreeSet};
+use std::collections::{HashSet};
 use rand::prelude::*;
 
 use super::clue::Clue;
@@ -11,7 +11,7 @@ pub enum CellType {
     Letter(Letter)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
 pub enum PossibleCellState {
     Letter,
     Clue(SlotDirection)
@@ -19,15 +19,15 @@ pub enum PossibleCellState {
 
 pub struct GridCell {
     pub cell: Option<CellType>,
-    pub slot_ids: Option<BTreeSet<u32>>,
-    pub assigned_cell_states: BTreeSet<PossibleCellState>,
-    pub possible_remaining_cell_states: BTreeSet<PossibleCellState>
+    pub slot_ids: Option<HashSet<u32>>,
+    pub assigned_cell_states: HashSet<PossibleCellState>,
+    pub possible_remaining_cell_states: HashSet<PossibleCellState>
 }
 
 impl GridCell {
 
     pub fn build(row_idx: u32, col_idx: u32, width: u32, height: u32) -> Self {
-        let mut cell_states = BTreeSet::new();
+        let mut cell_states = HashSet::new();
 
         if row_idx == 0 && col_idx == 0 {
             cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
@@ -61,7 +61,7 @@ impl GridCell {
         Self { 
             cell: None,
             slot_ids: None,
-            assigned_cell_states: BTreeSet::new(),
+            assigned_cell_states: HashSet::new(),
             possible_remaining_cell_states: cell_states
         }
     }
@@ -108,7 +108,7 @@ impl GridCell {
     pub fn assign_clue_state(
         &mut self, 
         rng: &mut ThreadRng, 
-        previously_assigned_states: &BTreeSet<PossibleCellState>, 
+        previously_assigned_states: &HashSet<PossibleCellState>, 
         is_first_row: bool, 
         is_first_col: bool
     ) -> Option<PossibleCellState> 
@@ -199,7 +199,7 @@ impl GridCell {
         match &mut self.slot_ids {
             Some(set) => { set.insert(slot_id.unwrap()); },
             None => {
-                let mut new_set : BTreeSet<u32> = BTreeSet::new();
+                let mut new_set : HashSet<u32> = HashSet::new();
                 new_set.insert(slot_id.unwrap());
                 self.slot_ids = Some(new_set);
             }
