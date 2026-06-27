@@ -24,25 +24,21 @@ pub enum SlotDirection {
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Slot {
     slot_id: u32,
+    slot_cells: Vec<Rc<RefCell<GridCell>>>,
     selected_word: Option<String>,
     suitable_words: Rc<RefCell<BTreeSet<String>>>,
     suitable_discarded_words: BTreeSet<String>, 
     unsuitable_words_per_crossing: BTreeMap<u32, BTreeSet<String>>,
     latest_unsuitable_words: BTreeSet<String>,
-    // associated_clue_cell: Rc<RefCell<GridCell>>,
-    // slot_length: u32,
-    slot_cells: Vec<Rc<RefCell<GridCell>>>,
-    // slot_direction: SlotDirection 
+    // associated_clue_cell: Rc<RefCell<GridCell>>
 }
 
 impl Slot {
     pub fn new(
         slot_id: u32,
-        // slot_length: u32,
         suitable_words: Rc<RefCell<BTreeSet<String>>>,
         // associated_clue_cell: Rc<RefCell<GridCell>>,
-        slot_cells: Vec<Rc<RefCell<GridCell>>>,
-        // slot_direction: SlotDirection
+        slot_cells: Vec<Rc<RefCell<GridCell>>>
         ) 
     -> Self {
 
@@ -52,16 +48,14 @@ impl Slot {
         let latest_unsuitable_words = BTreeSet::new();
 
         Self { 
-            slot_id,
+            slot_id, 
+            slot_cells,
             selected_word, 
             suitable_words, 
             suitable_discarded_words,
             unsuitable_words_per_crossing,
             latest_unsuitable_words,
-            // associated_clue_cell,
-            // slot_length, 
-            slot_cells,
-            // slot_direction 
+            // associated_clue_cell
         }
     }
 

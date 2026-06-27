@@ -218,11 +218,9 @@ impl ScandiGrid {
         let available_words = Rc::clone(&word_collections_per_length[&(word_length as u32)]);
         let slot = Slot::new(
                     *slot_id,
-                    // word_length_from_vertical as u32, 
                     Rc::clone(&available_words), 
                     // Rc::clone(&(self.layout[(adjusted_vertical_idx - word_length_from_vertical as u32) as usize][(horizontal_idx - 1) as usize])), 
-                    slot_cells, 
-                    // slot_direction_for_vertical
+                    slot_cells
                 );
 
         println!("Constructed slot {}", slot.get_slot_id());
