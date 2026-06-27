@@ -86,7 +86,8 @@ impl Slot {
         crossing_slot_ids
     }
 
-    pub fn has_placed_word(&self) -> bool {
+    pub fn has_placed_word(&self) -> bool 
+    {
         self.selected_word.is_some()
     }
 
