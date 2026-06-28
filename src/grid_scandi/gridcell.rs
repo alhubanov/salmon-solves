@@ -17,6 +17,7 @@ pub enum PossibleCellState {
     Clue(SlotDirection)
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct GridCell {
     pub cell: Option<CellType>,
     pub slot_ids: Option<HashSet<u32>>,
@@ -107,7 +108,7 @@ impl GridCell {
 
     pub fn assign_clue_state(
         &mut self, 
-        rng: &mut ThreadRng, 
+        rng: &mut dyn Rng, 
         previously_assigned_states: &HashSet<PossibleCellState>, 
         is_first_row: bool, 
         is_first_col: bool

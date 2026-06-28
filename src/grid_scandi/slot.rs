@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-use std::collections::{HashSet};
+use std::collections::{HashSet, HashMap};
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
 
@@ -21,6 +20,7 @@ pub enum SlotDirection {
     RightOnBottomSide
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct Slot {
     slot_id: u32,
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
@@ -28,7 +28,7 @@ pub struct Slot {
     selected_word: Option<String>,
     suitable_words: Rc<RefCell<HashSet<String>>>,
     suitable_discarded_words: HashSet<String>, 
-    unsuitable_words_per_crossing: BTreeMap<u32, HashSet<String>>,
+    unsuitable_words_per_crossing: HashMap<u32, HashSet<String>>,
     latest_unsuitable_words: HashSet<String>
 }
 
@@ -44,7 +44,7 @@ impl Slot {
 
         let selected_word = None;
         let suitable_discarded_words = HashSet::new();
-        let unsuitable_words_per_crossing = BTreeMap::new();
+        let unsuitable_words_per_crossing = HashMap::new();
         let latest_unsuitable_words = HashSet::new();
 
         Self { 
@@ -90,7 +90,7 @@ impl Slot {
         self.selected_word.is_some()
     }
 
-    pub fn nominate_word(&mut self, already_attempted_words: &HashSet<String>, rng: &mut ThreadRng) -> Result<String, LayoutError> 
+    pub fn nominate_word(&mut self, already_attempted_words: &HashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
     {    
         let borrowed_suitable_words = self.suitable_words.borrow();
         let candidate_words: Vec<&String> = borrowed_suitable_words

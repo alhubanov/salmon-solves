@@ -1,6 +1,7 @@
 use std::cmp::max;
 use std::{collections::{HashMap, HashSet}};
 use rand::{prelude::*};
+use rand::rand_core::Rng;
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -33,6 +34,7 @@ mod constants {
     pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub struct ScandiGrid {
     width: u32,
     height: u32,
@@ -66,7 +68,7 @@ impl Grid for ScandiGrid {
         Self { width, height, layout, clues_placed, words_placed, num_cells_accessed, word_slots }
     }
 
-    fn construct(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError> 
+    fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
         let mut word_collections_per_length : HashMap<u32, Rc<RefCell<HashSet<String>>>> = HashMap::new();
 
@@ -227,7 +229,7 @@ impl ScandiGrid {
         *slot_id += 1;
     }
 
-    fn create_all_slots(&mut self, word_collections_per_length : &HashMap<u32, Rc<RefCell<HashSet<String>>>>, rng: &mut ThreadRng) -> () 
+    fn create_all_slots(&mut self, word_collections_per_length : &HashMap<u32, Rc<RefCell<HashSet<String>>>>, rng: &mut dyn Rng) -> () 
     {
         let mut slot_id : u32 = 0;
         for vertical_idx in 0..self.height 
@@ -264,7 +266,7 @@ impl ScandiGrid {
         self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
     }
 
-    fn fill_slot(&mut self, slot_id: u32, rng: &mut ThreadRng) -> Result<(), HashSet<(u32, u32)>> 
+    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), HashSet<(u32, u32)>> 
     {
         let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
         let mut already_attempted_words = HashSet::new();
@@ -303,9 +305,9 @@ impl ScandiGrid {
         };
     }
 
-    fn fill_grid(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError> 
+    fn fill_grid(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        // let mut already_tried_backtrackings_per_slot : HashMap<u32, BTreeSet<u32>> = HashMap::new();
+        // let mut already_tried_backtrackings_per_slot : HashMap<u32, HashSet<u32>> = HashMap::new();
         let mut slot_stack : Vec<u32> = Vec::new();
         for idx_to_add_to_stack in 0..self.word_slots.len() 
         {
@@ -328,7 +330,7 @@ impl ScandiGrid {
                 // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
 
                 let crossing_ids : HashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
-                // let mut candidates : BTreeSet<&u32> = crossing_ids.difference(already_tried).collect();
+                // let mut candidates : HashSet<&u32> = crossing_ids.difference(already_tried).collect();
                 // if candidates.is_empty() 
                 // {
                 //     already_tried.clear();
@@ -355,7 +357,7 @@ impl ScandiGrid {
         Ok(())
     }
 
-    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut ThreadRng) -> HashSet<PossibleCellState> 
+    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut dyn Rng) -> HashSet<PossibleCellState> 
     {
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
         let current_word_len : i32 = self.get_max_len(vertical_idx, horizontal_idx);
@@ -424,7 +426,7 @@ impl ScandiGrid {
 
     fn assign_clue_states(
         curr_cell: &mut GridCell, 
-        rng: &mut ThreadRng, 
+        rng: &mut dyn Rng, 
         mut assigned_states: HashSet<PossibleCellState>, 
         is_first_row: bool, 
         is_first_col: bool, 

@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use rand::prelude::*;
+use rand::rand_core::Rng;
 
 use crate::grid::Crossword;
 use crate::grid_scandi::ScandiGrid;
@@ -31,13 +31,15 @@ pub fn run() -> () {
 }
 
 #[inline]
-pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, rng: &mut ThreadRng) -> T {
+pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, rng: &mut dyn Rng) -> T 
+{
 
     let mut grid = T::initialize(width, height);
 
     // Should the rng be different for each attempt?
     for _ in 0..10 
     {
+        grid = T::initialize(width, height);
         if let Ok(_) = grid.construct(rng) {
             break;
         }
@@ -48,7 +50,8 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, 
 
 // Access point if using frontend
 #[wasm_bindgen]
-pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Result<Crossword, JsValue> {
+pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Result<Crossword, JsValue> 
+{
     let settings: ui_input_utilities::UserSettings = serde_wasm_bindgen::from_value(settings)?;
 
     let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);

@@ -1,7 +1,7 @@
 use num::Integer;
-use rand::rngs::ThreadRng;
 use std::collections::{HashSet};
 use rand::{self, seq::SliceRandom};
+use rand::rand_core::Rng;
 
 #[cfg(test)]
 mod unit_tests;
@@ -58,7 +58,7 @@ impl Grid for SimpleGrid {
         Self { width, height, layout, placed_words }
     }
 
-    fn construct(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError> {
+    fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> {
         let mut words_vec : Vec<&str> = WORDS.lines().collect();
         words_vec.shuffle(rng);
 

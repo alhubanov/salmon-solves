@@ -16,7 +16,7 @@ pub enum LayoutError {
 
 pub trait Grid {
     fn initialize(width: u32, height: u32) -> Self;
-    fn construct(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError>;
+    fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError>;
     fn print(&self) -> ();
 }
 
@@ -39,7 +39,7 @@ impl Grid for GenericGrid  {
         panic!("Use GenericGrid::initialize(grid_type, width, height) instead.")
     }
 
-    fn construct(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError> {
+    fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> {
         match self {
             Self::Scandi(scandi_grid) => scandi_grid.construct(rng),
             Self::Simple(simple_grid) => simple_grid.construct(rng)
