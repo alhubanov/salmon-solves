@@ -54,7 +54,7 @@ impl Grid for SimpleGrid {
             }
         }
 
-        let placed_words = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
+        let placed_words = AHashSet::new();
 
         Self { width, height, layout, placed_words }
     }
