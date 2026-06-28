@@ -1,7 +1,8 @@
 use std::cmp::max;
-use std::{collections::{HashMap, HashSet}};
 use rand::{prelude::*};
 use rand::rand_core::Rng;
+
+use ahash::{AHashSet,AHashMap};
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -34,13 +35,12 @@ mod constants {
     pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
 }
 
-#[derive(PartialEq, Eq, Debug)]
 pub struct ScandiGrid {
     width: u32,
     height: u32,
     layout: Vec<Vec<Rc<RefCell<GridCell>>>>,
     clues_placed: u32,
-    words_placed: HashSet<String>,
+    words_placed: AHashSet<String>,
     num_cells_accessed: u32,
     word_slots: Vec<Slot>
 }
@@ -62,7 +62,7 @@ impl Grid for ScandiGrid {
         
         let num_cells_accessed = 0;
         let clues_placed = 0;
-        let words_placed = HashSet::new();
+        let words_placed = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
         let word_slots = Vec::new();
 
         Self { width, height, layout, clues_placed, words_placed, num_cells_accessed, word_slots }
@@ -70,7 +70,10 @@ impl Grid for ScandiGrid {
 
     fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        let mut word_collections_per_length : HashMap<u32, Rc<RefCell<HashSet<String>>>> = HashMap::new();
+        let mut word_collections_per_length : AHashMap<u32, Rc<RefCell<AHashSet<String>>>> = AHashMap::with_hasher(
+            ahash::RandomState::with_seeds(1, 2, 3, 4)
+        );
+
 
         let words_vec : Vec<&str> = WORDS.lines().collect();
         for word in words_vec 
@@ -197,7 +200,7 @@ impl ScandiGrid {
                     vertical_idx: u32, 
                     horizontal_idx: u32, 
                     slot_id: &mut u32, 
-                    word_collections_per_length : &HashMap<u32, Rc<RefCell<HashSet<String>>>>,
+                    word_collections_per_length : &AHashMap<u32, Rc<RefCell<AHashSet<String>>>>,
                     encountered_clue_cell: bool,
                     orientation: &str)  
     {
@@ -229,7 +232,7 @@ impl ScandiGrid {
         *slot_id += 1;
     }
 
-    fn create_all_slots(&mut self, word_collections_per_length : &HashMap<u32, Rc<RefCell<HashSet<String>>>>, rng: &mut dyn Rng) -> () 
+    fn create_all_slots(&mut self, word_collections_per_length : &AHashMap<u32, Rc<RefCell<AHashSet<String>>>>, rng: &mut dyn Rng) -> () 
     {
         let mut slot_id : u32 = 0;
         for vertical_idx in 0..self.height 
@@ -266,10 +269,10 @@ impl ScandiGrid {
         self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
     }
 
-    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), HashSet<(u32, u32)>> 
+    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
     {
         let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
-        let mut already_attempted_words = HashSet::new();
+        let mut already_attempted_words = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
 
         'selections: loop 
         {
@@ -307,7 +310,7 @@ impl ScandiGrid {
 
     fn fill_grid(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        // let mut already_tried_backtrackings_per_slot : HashMap<u32, HashSet<u32>> = HashMap::new();
+        // let mut already_tried_backtrackings_per_slot : AHashMap<u32, AHashSet<u32>> = AHashMap::new();
         let mut slot_stack : Vec<u32> = Vec::new();
         for idx_to_add_to_stack in 0..self.word_slots.len() 
         {
@@ -329,15 +332,26 @@ impl ScandiGrid {
 
                 // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
 
-                let crossing_ids : HashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
-                // let mut candidates : HashSet<&u32> = crossing_ids.difference(already_tried).collect();
+                let crossing_ids : AHashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
+                // let mut candidates : AHashSet<&u32> = crossing_ids.difference(already_tried).collect();
                 // if candidates.is_empty() 
                 // {
                 //     already_tried.clear();
                 //     candidates = crossing_ids.iter().collect();
                 // }
 
-                let crossing_id = *crossing_ids.iter().filter(|id| { let slot = self.get_slot(**id); slot.unwrap().has_placed_word() }).last().unwrap();
+                let mut candidates: Vec<u32> = crossing_ids.iter()
+                                                           .filter(|id| {
+                                                               let slot = self.get_slot(**id);
+                                                               slot.unwrap().has_placed_word()
+                                                           })
+                                                           .copied()
+                                                           .collect();
+                candidates.sort(); 
+                let idx = rng.random_range(0..candidates.len());
+                let crossing_id = candidates[idx];
+
+
                 let mut crossing_slot = self.get_slot(crossing_id);
                 crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
 
@@ -357,13 +371,13 @@ impl ScandiGrid {
         Ok(())
     }
 
-    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut dyn Rng) -> HashSet<PossibleCellState> 
+    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut dyn Rng) -> AHashSet<PossibleCellState> 
     {
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
         let current_word_len : i32 = self.get_max_len(vertical_idx, horizontal_idx);
 
         let mut curr_cell = self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut();
-        let assigned_states : HashSet<PossibleCellState> = HashSet::new();
+        let assigned_states : AHashSet<PossibleCellState> = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
 
         let is_first_row = vertical_idx == 0;
         let is_first_col = horizontal_idx == 0;
@@ -417,7 +431,7 @@ impl ScandiGrid {
         }
     }
 
-    fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: HashSet<PossibleCellState>) -> HashSet<PossibleCellState> 
+    fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: AHashSet<PossibleCellState>) -> AHashSet<PossibleCellState> 
     {
         curr_cell.assign_letter_state();
         assigned_states.insert(PossibleCellState::Letter);
@@ -427,10 +441,10 @@ impl ScandiGrid {
     fn assign_clue_states(
         curr_cell: &mut GridCell, 
         rng: &mut dyn Rng, 
-        mut assigned_states: HashSet<PossibleCellState>, 
+        mut assigned_states: AHashSet<PossibleCellState>, 
         is_first_row: bool, 
         is_first_col: bool, 
-        randomize: bool) -> HashSet<PossibleCellState> 
+        randomize: bool) -> AHashSet<PossibleCellState> 
     {
         let mut num_assigned_states = 0;
         let mut random_number: f32 = 0.0; // starts at 0.0 so at least one state is assigned
@@ -468,7 +482,7 @@ impl ScandiGrid {
         }
     }
 
-    fn restrict_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &HashSet<PossibleCellState>) -> Result<(), LayoutError> 
+    fn restrict_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &AHashSet<PossibleCellState>) -> Result<(), LayoutError> 
     {
         if assigned_cell_states.iter().all(|state| matches!(state, PossibleCellState::Clue(_))) {
 

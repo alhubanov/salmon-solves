@@ -1,6 +1,6 @@
-use std::collections::{HashSet, HashMap};
 use serde::{Serialize, Deserialize};
 use rand::prelude::*;
+use ahash::{AHashSet,AHashMap};
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -26,16 +26,16 @@ pub struct Slot {
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
     // associated_clue_cell: Rc<RefCell<GridCell>>
     selected_word: Option<String>,
-    suitable_words: Rc<RefCell<HashSet<String>>>,
-    suitable_discarded_words: HashSet<String>, 
-    unsuitable_words_per_crossing: HashMap<u32, HashSet<String>>,
-    latest_unsuitable_words: HashSet<String>
+    suitable_words: Rc<RefCell<AHashSet<String>>>,
+    suitable_discarded_words: AHashSet<String>, 
+    unsuitable_words_per_crossing: AHashMap<u32, AHashSet<String>>,
+    latest_unsuitable_words: AHashSet<String>
 }
 
 impl Slot {
     pub fn new(
         slot_id: u32,
-        suitable_words: Rc<RefCell<HashSet<String>>>,
+        suitable_words: Rc<RefCell<AHashSet<String>>>,
         slot_cells: Vec<Rc<RefCell<GridCell>>>
         // associated_clue_cell: Rc<RefCell<GridCell>>,
         ) 
@@ -43,9 +43,9 @@ impl Slot {
     {
 
         let selected_word = None;
-        let suitable_discarded_words = HashSet::new();
-        let unsuitable_words_per_crossing = HashMap::new();
-        let latest_unsuitable_words = HashSet::new();
+        let suitable_discarded_words = AHashSet::new();
+        let unsuitable_words_per_crossing = AHashMap::new();
+        let latest_unsuitable_words = AHashSet::new();
 
         Self { 
             slot_id, 
@@ -59,7 +59,7 @@ impl Slot {
         }
     }
 
-    pub fn get_suitable_word_set(&self) -> Ref<'_, HashSet<String>> 
+    pub fn get_suitable_word_set(&self) -> Ref<'_, AHashSet<String>> 
     {
         self.suitable_words.borrow()
     }
@@ -69,10 +69,10 @@ impl Slot {
         self.slot_id
     }
 
-    pub fn get_crossings(&self) -> HashSet<(u32, u32)> 
+    pub fn get_crossings(&self) -> AHashSet<(u32, u32)> 
     {
 
-        let mut crossing_slot_ids : HashSet<(u32, u32)> = HashSet::new();
+        let mut crossing_slot_ids : AHashSet<(u32, u32)> = AHashSet::new();
         for (idx, cell) in self.slot_cells.iter().enumerate() 
         {
             let cell_foreign_crossing_id : Option<u32> = cell.borrow().slot_ids.as_ref().unwrap().iter().find(|elem| *elem != &self.slot_id).copied();
@@ -90,10 +90,10 @@ impl Slot {
         self.selected_word.is_some()
     }
 
-    pub fn nominate_word(&mut self, already_attempted_words: &HashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
+    pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
     {    
         let borrowed_suitable_words = self.suitable_words.borrow();
-        let candidate_words: Vec<&String> = borrowed_suitable_words
+        let mut candidate_words: Vec<&String> = borrowed_suitable_words
                                                 .iter()
                                                 .filter(|word| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*word)) && 
                                                                 !self.suitable_discarded_words.contains(*word) && 
@@ -101,6 +101,8 @@ impl Slot {
                                                 .collect();
 
         if candidate_words.is_empty() { return Err(LayoutError::NoPossibleDomain); }
+        
+        candidate_words.sort();
         let idx = rng.random_range(0..candidate_words.len());
         let sampled_word = candidate_words[idx].clone();
 
@@ -146,7 +148,7 @@ impl Slot {
         };
     }
 
-    fn get_num_unsuitable_words_from_remaining(&self, suitable_words_left: &HashSet<&String>, required: &Vec<(usize, u8)>) -> u32 
+    fn get_num_unsuitable_words_from_remaining(&self, suitable_words_left: &AHashSet<&String>, required: &Vec<(usize, u8)>) -> u32 
     {
         let mut count = 0;
         for word in suitable_words_left.iter() 
@@ -165,7 +167,7 @@ impl Slot {
     pub fn has_possibilities_remaining(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
     {
         let suitable_words = self.suitable_words.borrow(); 
-        let suitable_words_left : HashSet<&String> = if let None = self.selected_word 
+        let suitable_words_left : AHashSet<&String> = if let None = self.selected_word 
         {
             suitable_words.iter()
                         .filter(|w| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*w)))

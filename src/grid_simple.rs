@@ -1,7 +1,8 @@
 use num::Integer;
-use std::collections::{HashSet};
 use rand::{self, seq::SliceRandom};
 use rand::rand_core::Rng;
+
+use ahash::AHashSet;
 
 #[cfg(test)]
 mod unit_tests;
@@ -37,7 +38,7 @@ pub struct SimpleGrid {
     width: u32,
     height: u32,
     layout: Vec<Vec<GridCell>>,
-    placed_words: HashSet<String>
+    placed_words: AHashSet<String>
 }
 
 impl Grid for SimpleGrid {
@@ -53,7 +54,7 @@ impl Grid for SimpleGrid {
             }
         }
 
-        let placed_words = HashSet::new();
+        let placed_words = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
 
         Self { width, height, layout, placed_words }
     }
