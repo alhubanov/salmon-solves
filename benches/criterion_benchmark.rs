@@ -7,23 +7,32 @@ use criterion_perf_events::Perf;
 use perfcnt::linux::HardwareEventType as Hardware;
 use perfcnt::linux::PerfCounterBuilderLinux as Builder;
 
-fn criterion_benchmark(c: &mut Criterion<Perf>) {
-    let mut group = c.benchmark_group("grid_5x5_all_seeds");
+// Before running: 
+// 1. Disable turbo boost - echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo
+// 2. Pin CPU frequency - sudo cpupower frequency-set -g performance
+//
+// To run pinned to a single core:
+// taskset -c 0 cargo bench
+fn criterion_benchmark(c: &mut Criterion<Perf>) 
+{
+    let mut group = c.benchmark_group("grid_6x6_all_seeds");
     group.sample_size(100);
     group.noise_threshold(0.1);
     group.significance_level(0.02);
 
     for seed in 1u64..=20 
     {
-        group.bench_with_input(
-            BenchmarkId::new("grid 5x5", seed),
+        group.bench_with_input
+        (
+            BenchmarkId::new("grid 6x6", seed),
             &seed,
             |b, &seed| 
             {
-                b.iter_batched(
+                b.iter_batched
+                (
                     || ChaCha8Rng::seed_from_u64(seed),
-                    |mut rng| { build_crossword_grid_for_command_line::<ScandiGrid>(black_box(5), black_box(5), &mut rng) },
-                    criterion::BatchSize::SmallInput
+                    |mut rng| { build_crossword_grid_for_command_line::<ScandiGrid>(black_box(6), black_box(6), &mut rng) },
+                    criterion::BatchSize::PerIteration
                 );
             },
         );
