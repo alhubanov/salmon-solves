@@ -9,7 +9,7 @@ fn criterion_benchmark(c: &mut Criterion)
 {
     let mut group = c.benchmark_group("sample_size");
     group.sample_size(300);
-    group.noise_threshold(0.20);
+    group.noise_threshold(0.1);
     group.significance_level(0.02);
     group.bench_function("grid 5x5", |b| b.iter_batched(
         || ChaCha8Rng::seed_from_u64(2),
