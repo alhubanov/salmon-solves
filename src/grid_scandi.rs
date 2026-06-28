@@ -1,6 +1,6 @@
 use std::cmp::max;
 use std::{collections::{HashMap, HashSet}};
-use rand::prelude::*;
+use rand::{prelude::*};
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -66,7 +66,7 @@ impl Grid for ScandiGrid {
         Self { width, height, layout, clues_placed, words_placed, num_cells_accessed, word_slots }
     }
 
-    fn construct(&mut self) -> Result<(), LayoutError> 
+    fn construct(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError> 
     {
         let mut word_collections_per_length : HashMap<u32, Rc<RefCell<HashSet<String>>>> = HashMap::new();
 
@@ -80,8 +80,8 @@ impl Grid for ScandiGrid {
                 .insert(word.to_string());
         }
 
-        self.create_all_slots(&word_collections_per_length);
-        self.fill_grid()?;
+        self.create_all_slots(&word_collections_per_length, rng);
+        self.fill_grid(rng)?;
 
         Ok(())
     } 
@@ -227,14 +227,14 @@ impl ScandiGrid {
         *slot_id += 1;
     }
 
-    fn create_all_slots(&mut self, word_collections_per_length : &HashMap<u32, Rc<RefCell<HashSet<String>>>>) -> () 
+    fn create_all_slots(&mut self, word_collections_per_length : &HashMap<u32, Rc<RefCell<HashSet<String>>>>, rng: &mut ThreadRng) -> () 
     {
         let mut slot_id : u32 = 0;
         for vertical_idx in 0..self.height 
         {
             for horizontal_idx in 0..self.width 
             {
-                let assigned_cell_states = self.set_cell_state(vertical_idx, horizontal_idx);
+                let assigned_cell_states = self.set_cell_state(vertical_idx, horizontal_idx, rng);
                 if let Err(_) = self.restrict_neighborhood(vertical_idx, horizontal_idx, &assigned_cell_states) {
                     // backtrack
                 }
@@ -264,7 +264,7 @@ impl ScandiGrid {
         self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
     }
 
-    fn fill_slot(&mut self, slot_id: u32) -> Result<(), HashSet<(u32, u32)>> 
+    fn fill_slot(&mut self, slot_id: u32, rng: &mut ThreadRng) -> Result<(), HashSet<(u32, u32)>> 
     {
         let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
         let mut already_attempted_words = HashSet::new();
@@ -274,7 +274,7 @@ impl ScandiGrid {
             let nominated_word = 
             {
                 let slot = self.get_slot(slot_id).unwrap();
-                slot.nominate_word(&already_attempted_words).or(Err(slot_crossing_ids.clone()))?
+                slot.nominate_word(&already_attempted_words, rng).or(Err(slot_crossing_ids.clone()))?
             };
 
             for (idx, crossing_id) in &slot_crossing_ids 
@@ -303,7 +303,7 @@ impl ScandiGrid {
         };
     }
 
-    fn fill_grid(&mut self) -> Result<(), LayoutError> 
+    fn fill_grid(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError> 
     {
         // let mut already_tried_backtrackings_per_slot : HashMap<u32, BTreeSet<u32>> = HashMap::new();
         let mut slot_stack : Vec<u32> = Vec::new();
@@ -316,7 +316,7 @@ impl ScandiGrid {
         {
             let curr_slot_id = slot_stack.pop().unwrap();
             
-            if let Err(crossings) = self.fill_slot(curr_slot_id) 
+            if let Err(crossings) = self.fill_slot(curr_slot_id, rng) 
             {
                 if crossings.is_empty() 
                 {
@@ -355,13 +355,12 @@ impl ScandiGrid {
         Ok(())
     }
 
-    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32) -> HashSet<PossibleCellState> 
+    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut ThreadRng) -> HashSet<PossibleCellState> 
     {
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
         let current_word_len : i32 = self.get_max_len(vertical_idx, horizontal_idx);
 
         let mut curr_cell = self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut();
-        let mut rng = rand::rng();
         let assigned_states : HashSet<PossibleCellState> = HashSet::new();
 
         let is_first_row = vertical_idx == 0;
@@ -425,7 +424,7 @@ impl ScandiGrid {
 
     fn assign_clue_states(
         curr_cell: &mut GridCell, 
-        mut rng: ThreadRng, 
+        rng: &mut ThreadRng, 
         mut assigned_states: HashSet<PossibleCellState>, 
         is_first_row: bool, 
         is_first_col: bool, 
@@ -436,7 +435,7 @@ impl ScandiGrid {
 
         while num_assigned_states < 2 && random_number < constants::THRESHOLD_PROBABILITY_FOR_SECOND_CLUE_STATE 
         {
-            match curr_cell.assign_clue_state(&mut rng, &assigned_states, is_first_row, is_first_col) 
+            match curr_cell.assign_clue_state(rng, &assigned_states, is_first_row, is_first_col) 
             {
                 Some(state) => 
                 {

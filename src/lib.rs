@@ -1,4 +1,5 @@
 use wasm_bindgen::prelude::*;
+use rand::prelude::*;
 
 use crate::grid::Crossword;
 use crate::grid_scandi::ScandiGrid;
@@ -19,7 +20,8 @@ pub fn run() -> () {
     let width = terminal_input_utilities::take_dimension_value_as_input("width", &mut input);
     let height = terminal_input_utilities::take_dimension_value_as_input("height", &mut input);
 
-    let grid : ScandiGrid = build_crossword_grid_for_command_line(width, height);
+    let mut rng = rand::rng();
+    let grid : ScandiGrid = build_crossword_grid_for_command_line(width, height, &mut rng);
 
     println!();
     println!("Here's a crossword: ");
@@ -29,12 +31,14 @@ pub fn run() -> () {
 }
 
 #[inline]
-pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32) -> T {
+pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, rng: &mut ThreadRng) -> T {
 
     let mut grid = T::initialize(width, height);
+
+    // Should the rng be different for each attempt?
     for _ in 0..10 
     {
-        if let Ok(_) = grid.construct() {
+        if let Ok(_) = grid.construct(rng) {
             break;
         }
     }
@@ -48,8 +52,11 @@ pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Resul
     let settings: ui_input_utilities::UserSettings = serde_wasm_bindgen::from_value(settings)?;
 
     let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
-    for _ in 0..10 {
-        if let Ok(_) = grid.construct() {
+    for _ in 0..10 
+    {
+        // Should the rng be the same for all attempts?
+        let mut rng = rand::rng();
+        if let Ok(_) = grid.construct(&mut rng) {
             break;
         }
     }

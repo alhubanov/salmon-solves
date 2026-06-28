@@ -1,4 +1,5 @@
 use num::Integer;
+use rand::rngs::ThreadRng;
 use std::collections::{HashSet};
 use rand::{self, seq::SliceRandom};
 
@@ -57,11 +58,9 @@ impl Grid for SimpleGrid {
         Self { width, height, layout, placed_words }
     }
 
-    fn construct(&mut self) -> Result<(), LayoutError> {
+    fn construct(&mut self, rng: &mut ThreadRng) -> Result<(), LayoutError> {
         let mut words_vec : Vec<&str> = WORDS.lines().collect();
-
-        let mut rng = rand::rng();
-        words_vec.shuffle(&mut rng);
+        words_vec.shuffle(rng);
 
         for word in words_vec {
             if let Err(_) = self.place_word(&word.to_owned()) {

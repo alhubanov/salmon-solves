@@ -90,9 +90,8 @@ impl Slot {
         self.selected_word.is_some()
     }
 
-    pub fn nominate_word(&mut self, already_attempted_words: &HashSet<String>) -> Result<String, LayoutError> 
+    pub fn nominate_word(&mut self, already_attempted_words: &HashSet<String>, rng: &mut ThreadRng) -> Result<String, LayoutError> 
     {    
-        let mut rng = rand::rng();
         let borrowed_suitable_words = self.suitable_words.borrow();
         let candidate_words: Vec<&String> = borrowed_suitable_words
                                                 .iter()
