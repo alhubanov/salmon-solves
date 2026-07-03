@@ -62,7 +62,7 @@ impl Grid for ScandiGrid {
         
         let num_cells_accessed = 0;
         let clues_placed = 0;
-        let words_placed = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
+        let words_placed = AHashSet::new();
         let word_slots = Vec::new();
 
         Self { width, height, layout, clues_placed, words_placed, num_cells_accessed, word_slots }
@@ -70,9 +70,7 @@ impl Grid for ScandiGrid {
 
     fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        let mut word_collections_per_length : AHashMap<u32, Rc<RefCell<AHashSet<String>>>> = AHashMap::with_hasher(
-            ahash::RandomState::with_seeds(1, 2, 3, 4)
-        );
+        let mut word_collections_per_length : AHashMap<u32, Rc<RefCell<AHashSet<String>>>> = AHashMap::new();
 
 
         let words_vec : Vec<&str> = WORDS.lines().collect();
@@ -272,7 +270,7 @@ impl ScandiGrid {
     fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
     {
         let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
-        let mut already_attempted_words = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
+        let mut already_attempted_words = AHashSet::new();
 
         'selections: loop 
         {
@@ -377,7 +375,7 @@ impl ScandiGrid {
         let current_word_len : i32 = self.get_max_len(vertical_idx, horizontal_idx);
 
         let mut curr_cell = self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut();
-        let assigned_states : AHashSet<PossibleCellState> = AHashSet::with_hasher(ahash::RandomState::with_seeds(1,2,3,4));
+        let assigned_states : AHashSet<PossibleCellState> = AHashSet::new();
 
         let is_first_row = vertical_idx == 0;
         let is_first_col = horizontal_idx == 0;
