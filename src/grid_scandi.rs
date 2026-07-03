@@ -272,10 +272,10 @@ impl ScandiGrid {
 
         'selections: loop 
         {
-            let nominated_word = 
+            let nominated_word = match self.get_slot(slot_id).unwrap().nominate_word(&already_attempted_words, rng) 
             {
-                let slot = self.get_slot(slot_id).unwrap();
-                slot.nominate_word(&already_attempted_words, rng).or(Err(slot_crossing_ids.clone()))?
+                Ok(word) => word,
+                Err(_) => return Err(slot_crossing_ids)
             };
 
             for (idx, crossing_id) in &slot_crossing_ids 
