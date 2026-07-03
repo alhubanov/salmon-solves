@@ -13,6 +13,8 @@ use perfcnt::linux::PerfCounterBuilderLinux as Builder;
 //
 // To run pinned to a single core:
 // taskset -c 0 cargo bench
+//
+// In case of a 'permission denied' error: sudo sh -c 'echo 1 >/proc/sys/kernel/perf_event_paranoid'
 fn criterion_benchmark(c: &mut Criterion<Perf>) 
 {
     let mut group = c.benchmark_group("grid_6x6_all_seeds");

@@ -201,6 +201,8 @@ impl Slot {
     {
         self.suitable_words.borrow_mut().remove(&nominated_word);
         
+        // There is a possibility to use .iter.zip() here to avoid calling .nth(). 
+        // It is only faster though if the majority of instances, where this loop runs, consist mostly of None cells. 
         for (idx, cell) in self.slot_cells.iter().enumerate() {
             if cell.borrow().cell.is_none() {
                 cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(nominated_word.chars().nth(idx).unwrap())));
