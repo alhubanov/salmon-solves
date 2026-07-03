@@ -199,14 +199,15 @@ impl Slot {
 
     pub fn place_nominated_word(&mut self, nominated_word: String) -> () 
     {
-        self.selected_word = Some(nominated_word);
+        self.suitable_words.borrow_mut().remove(&nominated_word);
+        
         for (idx, cell) in self.slot_cells.iter().enumerate() {
             if cell.borrow().cell.is_none() {
-                cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(self.selected_word.as_ref().unwrap().chars().nth(idx).unwrap())));
+                cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(nominated_word.chars().nth(idx).unwrap())));
             }
         }
 
-        self.suitable_words.borrow_mut().remove(&(self.selected_word.clone().unwrap()));
+        self.selected_word = Some(nominated_word);
     }
 
     pub fn deallocate_and_discard_word(&mut self) -> () 
