@@ -40,7 +40,6 @@ pub struct ScandiGrid {
     height: u32,
     layout: Vec<Vec<Rc<RefCell<GridCell>>>>,
     clues_placed: u32,
-    words_placed: AHashSet<String>,
     num_cells_accessed: u32,
     word_slots: Vec<Slot>
 }
@@ -62,10 +61,9 @@ impl Grid for ScandiGrid {
         
         let num_cells_accessed = 0;
         let clues_placed = 0;
-        let words_placed = AHashSet::new();
         let word_slots = Vec::new();
 
-        Self { width, height, layout, clues_placed, words_placed, num_cells_accessed, word_slots }
+        Self { width, height, layout, clues_placed, num_cells_accessed, word_slots }
     }
 
     fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
@@ -292,8 +290,7 @@ impl ScandiGrid {
 
                 crossing_slot.determine_unsuitable_words_due_crossing_slot(slot_id, &nominated_word, *idx);
             }
-        
-            self.words_placed.insert(nominated_word.clone());
+
             self.get_slot(slot_id).unwrap().place_nominated_word(nominated_word);
 
             for (_, crossing_id) in slot_crossing_ids 
