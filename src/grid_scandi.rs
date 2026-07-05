@@ -342,7 +342,9 @@ impl ScandiGrid {
                                                            })
                                                            .copied()
                                                            .collect();
-                candidates.sort(); 
+                candidates.sort();
+
+                // this will panic if candidates is empty but we assume that is not possible 
                 let idx = rng.random_range(0..candidates.len());
                 let crossing_id = candidates[idx];
 
