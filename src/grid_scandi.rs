@@ -103,7 +103,7 @@ impl Grid for ScandiGrid {
 
 impl ScandiGrid {
 
-    fn get_slot(&mut self, slot_id: u32) -> Option<&mut Slot> 
+    fn get_slot(&mut self, slot_id: &u32) -> Option<&mut Slot> 
     {
         for slot in &mut self.word_slots {
 
@@ -265,7 +265,7 @@ impl ScandiGrid {
         self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
     }
 
-    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
+    fn fill_slot(&mut self, slot_id: &u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
     {
         let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
         let mut already_attempted_words = AHashSet::new();
@@ -280,7 +280,7 @@ impl ScandiGrid {
 
             for (idx, crossing_id) in &slot_crossing_ids 
             {
-                let crossing_slot = self.get_slot(*crossing_id).unwrap();
+                let crossing_slot = self.get_slot(crossing_id).unwrap();
 
                 if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word, *idx) 
                 {
@@ -295,7 +295,7 @@ impl ScandiGrid {
 
             for (_, crossing_id) in slot_crossing_ids 
             {
-                let crossing_slot = self.get_slot(crossing_id);
+                let crossing_slot = self.get_slot(&crossing_id);
                 crossing_slot.unwrap().apply_restrictions(slot_id);
             }
         
@@ -309,14 +309,14 @@ impl ScandiGrid {
         let mut slot_stack : Vec<u32> = Vec::new();
         for idx_to_add_to_stack in 0..self.word_slots.len() 
         {
-            slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
+            slot_stack.push(*self.word_slots[idx_to_add_to_stack].get_slot_id()); 
         }
 
         while !slot_stack.is_empty() 
         {
             let curr_slot_id = slot_stack.pop().unwrap();
             
-            if let Err(crossings) = self.fill_slot(curr_slot_id, rng) 
+            if let Err(crossings) = self.fill_slot(&curr_slot_id, rng) 
             {
                 if crossings.is_empty() 
                 {
@@ -335,12 +335,11 @@ impl ScandiGrid {
                 //     candidates = crossing_ids.iter().collect();
                 // }
 
-                let mut candidates: Vec<u32> = crossing_ids.iter()
+                let mut candidates: Vec<&u32> = crossing_ids.iter()
                                                            .filter(|id| {
-                                                               let slot = self.get_slot(**id);
+                                                               let slot = self.get_slot(*id);
                                                                slot.unwrap().has_placed_word()
                                                            })
-                                                           .copied()
                                                            .collect();
                 candidates.sort(); 
                 let idx = rng.random_range(0..candidates.len());
@@ -353,13 +352,13 @@ impl ScandiGrid {
                 let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
                 for (_, id) in secondary_crossing_ids 
                 {
-                    let secondary_crossing_slot = self.get_slot(id);
+                    let secondary_crossing_slot = self.get_slot(&id);
                     secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
                 }
 
                 // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
 
-                slot_stack.push(crossing_id);
+                slot_stack.push(*crossing_id);
             }
         }
 

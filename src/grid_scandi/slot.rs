@@ -64,9 +64,9 @@ impl Slot {
         self.suitable_words.borrow()
     }
 
-    pub fn get_slot_id(&self) -> u32 
+    pub fn get_slot_id(&self) -> &u32 
     {
-        self.slot_id
+        &self.slot_id
     }
 
     pub fn get_crossings(&self) -> AHashSet<(u32, u32)> 
@@ -109,7 +109,7 @@ impl Slot {
         return Ok(sampled_word);
     }
 
-    fn determine_crossing_points(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> Vec<(usize, u8)> 
+    fn determine_crossing_points(&self, slot_id: &u32, nominated_word: &String, idx_of_crossing_letter: u32) -> Vec<(usize, u8)> 
     {
         self.slot_cells
             .iter()
@@ -127,7 +127,7 @@ impl Slot {
             .collect()
     }
  
-    pub fn determine_unsuitable_words_due_crossing_slot(&mut self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> () 
+    pub fn determine_unsuitable_words_due_crossing_slot(&mut self, slot_id: &u32, nominated_word: &String, idx_of_crossing_letter: u32) -> () 
     {
         self.latest_unsuitable_words.clear();
 
@@ -164,7 +164,7 @@ impl Slot {
         count
     }
 
-    pub fn has_possibilities_remaining(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
+    pub fn has_possibilities_remaining(&self, slot_id: &u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
     {
         let suitable_words = self.suitable_words.borrow(); 
         let suitable_words_left : AHashSet<&String> = if let None = self.selected_word 
@@ -187,14 +187,14 @@ impl Slot {
         num_unsuitable_words_from_remaining < suitable_words_left.len() as u32
     }
 
-    pub fn remove_unsuitable_words_related_to_slot_id(&mut self, slot_id: u32) -> () 
+    pub fn remove_unsuitable_words_related_to_slot_id(&mut self, slot_id: &u32) -> () 
     {
-        self.unsuitable_words_per_crossing.remove(&slot_id);
+        self.unsuitable_words_per_crossing.remove(slot_id);
     }
 
-    pub fn apply_restrictions(&mut self, slot_id: u32) -> () 
+    pub fn apply_restrictions(&mut self, slot_id: &u32) -> () 
     {
-        self.unsuitable_words_per_crossing.insert(slot_id, std::mem::take(&mut self.latest_unsuitable_words));
+        self.unsuitable_words_per_crossing.insert(*slot_id, std::mem::take(&mut self.latest_unsuitable_words));
     }
 
     pub fn place_nominated_word(&mut self, nominated_word: String) -> () 
