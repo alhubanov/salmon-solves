@@ -26,8 +26,8 @@ pub struct Slot {
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
     // associated_clue_cell: Rc<RefCell<GridCell>>
     selected_word: Option<String>,
-    available_candidates: Rc<RefCell<AHashSet<String>>>,
-    available_discarded_candidates: AHashSet<String>, 
+    available_candidates: Rc<RefCell<Vec<String>>>,
+    available_discarded_candidates: Vec<String>, 
     unsuitable_words_per_crossing: AHashMap<u32, AHashSet<String>>,
     latest_unsuitable_words: AHashSet<String>
 }
@@ -35,7 +35,7 @@ pub struct Slot {
 impl Slot {
     pub fn new(
         slot_id: u32,
-        available_candidates: Rc<RefCell<AHashSet<String>>>,
+        available_candidates: Rc<RefCell<Vec<String>>>,
         slot_cells: Vec<Rc<RefCell<GridCell>>>
         // associated_clue_cell: Rc<RefCell<GridCell>>,
         ) 
@@ -43,7 +43,7 @@ impl Slot {
     {
 
         let selected_word = None;
-        let available_discarded_candidates = AHashSet::new();
+        let available_discarded_candidates = Vec::new();
         let unsuitable_words_per_crossing = AHashMap::new();
         let latest_unsuitable_words = AHashSet::new();
 
@@ -59,7 +59,7 @@ impl Slot {
         }
     }
 
-    pub fn get_suitable_word_set(&self) -> Ref<'_, AHashSet<String>> 
+    pub fn get_suitable_word_set(&self) -> Ref<'_, Vec<String>> 
     {
         self.available_candidates.borrow()
     }
@@ -180,7 +180,7 @@ impl Slot {
 
     pub fn place_nominated_word(&mut self, nominated_word: String) -> () 
     {
-        self.available_candidates.borrow_mut().remove(&nominated_word);
+        self.available_candidates.borrow_mut().retain(|word| word != &nominated_word);
         
         // There is a possibility to use .iter.zip() here to avoid calling .nth(). 
         // It is only faster though if the majority of instances, where this loop runs, consist mostly of None cells. 
@@ -203,8 +203,8 @@ impl Slot {
         // It is not clear to me whether discarding words permanently is good enough here.
 
         if self.selected_word != None {
-            self.available_discarded_candidates.insert(self.selected_word.clone().unwrap());
-            self.available_candidates.borrow_mut().insert(self.selected_word.clone().unwrap());
+            self.available_discarded_candidates.push(self.selected_word.clone().unwrap());
+            self.available_candidates.borrow_mut().push(self.selected_word.clone().unwrap());
         }
         
         self.selected_word = None;

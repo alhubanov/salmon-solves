@@ -68,7 +68,7 @@ impl Grid for ScandiGrid {
 
     fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        let mut word_collections_per_length : AHashMap<u32, Rc<RefCell<AHashSet<String>>>> = AHashMap::new();
+        let mut word_collections_per_length : AHashMap<u32, Rc<RefCell<Vec<String>>>> = AHashMap::new();
 
 
         let words_vec : Vec<&str> = WORDS.lines().collect();
@@ -78,7 +78,7 @@ impl Grid for ScandiGrid {
                 .entry(word.len() as u32)
                 .or_default()
                 .borrow_mut()
-                .insert(word.to_string());
+                .push(word.to_string());
         }
 
         self.create_all_slots(&word_collections_per_length, rng);
@@ -196,7 +196,7 @@ impl ScandiGrid {
                     vertical_idx: u32, 
                     horizontal_idx: u32, 
                     slot_id: &mut u32, 
-                    word_collections_per_length : &AHashMap<u32, Rc<RefCell<AHashSet<String>>>>,
+                    word_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<String>>>>,
                     encountered_clue_cell: bool,
                     orientation: &str)  
     {
@@ -228,7 +228,7 @@ impl ScandiGrid {
         *slot_id += 1;
     }
 
-    fn create_all_slots(&mut self, word_collections_per_length : &AHashMap<u32, Rc<RefCell<AHashSet<String>>>>, rng: &mut dyn Rng) -> () 
+    fn create_all_slots(&mut self, word_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<String>>>>, rng: &mut dyn Rng) -> () 
     {
         let mut slot_id : u32 = 0;
         for vertical_idx in 0..self.height 
