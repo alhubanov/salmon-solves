@@ -19,7 +19,7 @@ fn criterion_benchmark(c: &mut Criterion<Perf>)
 {
     let mut group = c.benchmark_group("grid_6x6_all_seeds");
     group.sample_size(100);
-    group.noise_threshold(0.1);
+    group.noise_threshold(0.05);
     group.significance_level(0.02);
 
     for seed in 1u64..=20 
