@@ -26,8 +26,8 @@ pub struct Slot {
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
     // associated_clue_cell: Rc<RefCell<GridCell>>
     selected_word: Option<String>,
-    available_words: Rc<RefCell<AHashSet<String>>>,
-    available_discarded_words: AHashSet<String>, 
+    available_candidates: Rc<RefCell<AHashSet<String>>>,
+    available_discarded_candidates: AHashSet<String>, 
     unsuitable_words_per_crossing: AHashMap<u32, AHashSet<String>>,
     latest_unsuitable_words: AHashSet<String>
 }
@@ -35,7 +35,7 @@ pub struct Slot {
 impl Slot {
     pub fn new(
         slot_id: u32,
-        available_words: Rc<RefCell<AHashSet<String>>>,
+        available_candidates: Rc<RefCell<AHashSet<String>>>,
         slot_cells: Vec<Rc<RefCell<GridCell>>>
         // associated_clue_cell: Rc<RefCell<GridCell>>,
         ) 
@@ -43,7 +43,7 @@ impl Slot {
     {
 
         let selected_word = None;
-        let available_discarded_words = AHashSet::new();
+        let available_discarded_candidates = AHashSet::new();
         let unsuitable_words_per_crossing = AHashMap::new();
         let latest_unsuitable_words = AHashSet::new();
 
@@ -52,8 +52,8 @@ impl Slot {
             slot_cells,
             // associated_clue_cell
             selected_word, 
-            available_words, 
-            available_discarded_words,
+            available_candidates, 
+            available_discarded_candidates,
             unsuitable_words_per_crossing,
             latest_unsuitable_words
         }
@@ -61,7 +61,7 @@ impl Slot {
 
     pub fn get_suitable_word_set(&self) -> Ref<'_, AHashSet<String>> 
     {
-        self.available_words.borrow()
+        self.available_candidates.borrow()
     }
 
     pub fn get_slot_id(&self) -> u32 
@@ -92,11 +92,11 @@ impl Slot {
 
     pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
     {    
-        let borrowed_suitable_words = self.available_words.borrow();
+        let borrowed_suitable_words = self.available_candidates.borrow();
         let mut candidate_words: Vec<&String> = borrowed_suitable_words
                                                 .iter()
                                                 .filter(|word| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*word)) && 
-                                                                !self.available_discarded_words.contains(*word) && 
+                                                                !self.available_discarded_candidates.contains(*word) && 
                                                                 !already_attempted_words.contains(*word))
                                                 .collect();
 
@@ -136,7 +136,7 @@ impl Slot {
             return;
         }
 
-        let suitable_words = self.available_words.borrow(); 
+        let suitable_words = self.available_candidates.borrow(); 
         for word in suitable_words.iter() 
         {
             let bytes = word.as_bytes();
@@ -156,7 +156,7 @@ impl Slot {
 
         let required_letters = self.determine_crossing_points(slot_id, nominated_word, idx_of_crossing_letter);
 
-        let suitable_words = self.available_words.borrow(); 
+        let suitable_words = self.available_candidates.borrow(); 
         let num_suitable_words = suitable_words.iter()
                                                 .filter(
                                                     |w| {
@@ -180,7 +180,7 @@ impl Slot {
 
     pub fn place_nominated_word(&mut self, nominated_word: String) -> () 
     {
-        self.available_words.borrow_mut().remove(&nominated_word);
+        self.available_candidates.borrow_mut().remove(&nominated_word);
         
         // There is a possibility to use .iter.zip() here to avoid calling .nth(). 
         // It is only faster though if the majority of instances, where this loop runs, consist mostly of None cells. 
@@ -203,8 +203,8 @@ impl Slot {
         // It is not clear to me whether discarding words permanently is good enough here.
 
         if self.selected_word != None {
-            self.available_discarded_words.insert(self.selected_word.clone().unwrap());
-            self.available_words.borrow_mut().insert(self.selected_word.clone().unwrap());
+            self.available_discarded_candidates.insert(self.selected_word.clone().unwrap());
+            self.available_candidates.borrow_mut().insert(self.selected_word.clone().unwrap());
         }
         
         self.selected_word = None;
