@@ -148,7 +148,7 @@ impl Slot {
         };
     }
 
-    fn get_num_unsuitable_words_from_remaining(&self, suitable_words_left: &AHashSet<&String>, required: &Vec<(usize, u8)>) -> u32 
+    fn get_num_unsuitable_words_from_remaining(&self, suitable_words_left: &Vec<&String>, required: &Vec<(usize, u8)>) -> u32 
     {
         let mut count = 0;
         for word in suitable_words_left.iter() 
@@ -167,7 +167,7 @@ impl Slot {
     pub fn has_possibilities_remaining(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
     {
         let suitable_words = self.suitable_words.borrow(); 
-        let suitable_words_left : AHashSet<&String> = if let None = self.selected_word 
+        let suitable_words_left : Vec<&String> = if let None = self.selected_word 
         {
             suitable_words.iter()
                         .filter(|w| !self.unsuitable_words_per_crossing.iter().any(|(_, set)| set.contains(*w)))
