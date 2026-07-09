@@ -16,6 +16,7 @@ mod clue;
 mod letter;
 mod gridcell;
 mod slot;
+mod slot_candidate;
 
 use slot::Slot;
 use slot::SlotDirection;
@@ -23,6 +24,7 @@ use gridcell::GridCell;
 use crate::grid::LayoutError;
 use crate::grid_scandi::gridcell::PossibleCellState;
 use crate::grid::Grid;
+use crate::grid_scandi::slot_candidate::SlotCandidate;
 
 static WORDS: &str = include_str!("../word_files/common_english_words.txt");
 
@@ -68,7 +70,7 @@ impl Grid for ScandiGrid {
 
     fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        let mut word_collections_per_length : AHashMap<u32, Rc<RefCell<Vec<String>>>> = AHashMap::new();
+        let mut word_collections_per_length : AHashMap<u32, Rc<RefCell<Vec<SlotCandidate>>>> = AHashMap::new();
 
 
         let words_vec : Vec<&str> = WORDS.lines().collect();
@@ -78,7 +80,7 @@ impl Grid for ScandiGrid {
                 .entry(word.len() as u32)
                 .or_default()
                 .borrow_mut()
-                .push(word.to_string());
+                .push(SlotCandidate::new(word.to_string()));
         }
 
         self.create_all_slots(&word_collections_per_length, rng);
@@ -196,7 +198,7 @@ impl ScandiGrid {
                     vertical_idx: u32, 
                     horizontal_idx: u32, 
                     slot_id: &mut u32, 
-                    word_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<String>>>>,
+                    word_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<SlotCandidate>>>>,
                     encountered_clue_cell: bool,
                     orientation: &str)  
     {
@@ -228,7 +230,7 @@ impl ScandiGrid {
         *slot_id += 1;
     }
 
-    fn create_all_slots(&mut self, word_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<String>>>>, rng: &mut dyn Rng) -> () 
+    fn create_all_slots(&mut self, word_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<SlotCandidate>>>>, rng: &mut dyn Rng) -> () 
     {
         let mut slot_id : u32 = 0;
         for vertical_idx in 0..self.height 
@@ -284,19 +286,17 @@ impl ScandiGrid {
 
                 if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word, *idx) 
                 {
-                    already_attempted_words.insert(nominated_word);
+                    already_attempted_words.insert(nominated_word.clone());
                     continue 'selections;
                 }
-
-                crossing_slot.determine_unsuitable_words_due_crossing_slot(slot_id, &nominated_word, *idx);
             }
 
-            self.get_slot(slot_id).unwrap().place_nominated_word(nominated_word);
+            self.get_slot(slot_id).unwrap().place_nominated_word(nominated_word.clone());
 
-            for (_, crossing_id) in slot_crossing_ids 
+            for (idx, crossing_id) in slot_crossing_ids 
             {
                 let crossing_slot = self.get_slot(crossing_id);
-                crossing_slot.unwrap().apply_restrictions(slot_id);
+                crossing_slot.unwrap().apply_restrictions(slot_id, &nominated_word, idx);
             }
         
             return Ok(());
@@ -356,7 +356,7 @@ impl ScandiGrid {
                 for (_, id) in secondary_crossing_ids 
                 {
                     let secondary_crossing_slot = self.get_slot(id);
-                    secondary_crossing_slot.unwrap().remove_unsuitable_words_related_to_slot_id(crossing_id);
+                    secondary_crossing_slot.unwrap().remove_slot_candidate_restrictions(crossing_id);
                 }
 
                 // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
