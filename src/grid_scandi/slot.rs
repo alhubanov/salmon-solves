@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::cell::Ref;
 
 use crate::grid_scandi::LayoutError;
+use crate::grid_scandi::clue;
 use crate::grid_scandi::gridcell::GridCell;
 
 use crate::grid_scandi::gridcell::CellType;
@@ -25,7 +26,7 @@ pub enum SlotDirection {
 pub struct Slot {
     slot_id: u32,
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
-    // associated_clue_cell: Rc<RefCell<GridCell>>
+    associated_clue_cell: Rc<RefCell<GridCell>>,
     selected_word: Option<String>,
     available_candidates: Rc<RefCell<Vec<SlotCandidate>>>,
     available_discarded_candidates: Vec<String>
@@ -34,10 +35,10 @@ pub struct Slot {
 impl Slot {
     pub fn new(
         slot_id: u32,
-        available_candidates: Rc<RefCell<Vec<SlotCandidate>>>,
-        slot_cells: Vec<Rc<RefCell<GridCell>>>
-        // associated_clue_cell: Rc<RefCell<GridCell>>,
-        ) 
+        slot_cells: Vec<Rc<RefCell<GridCell>>>,
+        associated_clue_cell: Rc<RefCell<GridCell>>,
+        available_candidates: Rc<RefCell<Vec<SlotCandidate>>>
+    ) 
     -> Self 
     {
 
@@ -47,7 +48,7 @@ impl Slot {
         Self { 
             slot_id, 
             slot_cells,
-            // associated_clue_cell
+            associated_clue_cell,
             selected_word, 
             available_candidates, 
             available_discarded_candidates
@@ -172,7 +173,7 @@ impl Slot {
         };
     }
 
-    pub fn place_nominated_word(&mut self, nominated_word: String) -> () 
+    pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String) -> () 
     {
         let _ = self.available_candidates.borrow_mut()
                                          .iter_mut()
@@ -186,6 +187,9 @@ impl Slot {
                 cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(nominated_word.chars().nth(idx).unwrap())));
             }
         }
+
+        // TODO: add proper hints to clues
+        self.associated_clue_cell.borrow_mut().cell = Some(CellType::Clue(clue::Clue::new(&"".to_string())));
 
         self.selected_word = Some(nominated_word);
     }
