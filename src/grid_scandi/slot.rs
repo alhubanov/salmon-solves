@@ -174,11 +174,15 @@ impl Slot {
     }
 
     pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String) -> () 
-    {
-        let _ = self.available_candidates.borrow_mut()
-                                         .iter_mut()
-                                         .filter(|candidate| candidate.get_word() == &nominated_word)
-                                         .map(|candidate| candidate.set_assigned_slot_id(self.slot_id));
+    {   
+        // Assume a valid candidate always exists     
+        if let Some(candidate) = self.available_candidates
+                                     .borrow_mut()
+                                     .iter_mut()
+                                     .find(|candidate| candidate.get_word() == &nominated_word)
+        {
+            candidate.set_assigned_slot_id(self.slot_id);
+        }
         
         // There is a possibility to use .iter.zip() here to avoid calling .nth(). 
         // It is only faster though if the majority of instances, where this loop runs, consist mostly of None cells. 
@@ -205,10 +209,15 @@ impl Slot {
         if self.selected_word != None 
         {
             self.available_discarded_candidates.push(self.selected_word.clone().unwrap());
-            let _ = self.available_candidates.borrow_mut()
-                                             .iter_mut()
-                                             .filter(|candidate| candidate.get_word() == &self.selected_word.clone().unwrap())
-                                             .map(|candidate| candidate.clear_assigned_slot_id());
+
+            // Assume a valid candidate always exists   
+            if let Some(candidate) = self.available_candidates
+                                     .borrow_mut()
+                                     .iter_mut()
+                                     .find(|candidate| candidate.get_word() == &self.selected_word.clone().unwrap())
+            {
+                candidate.clear_assigned_slot_id();
+            }
         }
         
         self.selected_word = None;

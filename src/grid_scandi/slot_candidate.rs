@@ -60,6 +60,6 @@ impl SlotCandidate {
 
     pub fn remove_restrictions(&mut self, restricted_slot_id: u32, restricting_slot_id: u32) 
     {
-        self.conflicts.retain(|conflict| conflict.get_restricted_slot_id() != restricted_slot_id && conflict.get_restricting_slot_id() != restricting_slot_id);
+        self.conflicts.retain(|conflict| conflict.get_restricted_slot_id() != restricted_slot_id || conflict.get_restricting_slot_id() != restricting_slot_id);
     }
 }
