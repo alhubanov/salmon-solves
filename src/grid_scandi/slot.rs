@@ -65,6 +65,16 @@ impl Slot {
         self.slot_id
     }
 
+    pub fn get_selected_word(&self) -> &Option<String>
+    {
+        &self.selected_word
+    }
+
+    pub fn get_cells(&self) -> &Vec<Rc<RefCell<GridCell>>>
+    {
+        &self.slot_cells
+    }
+
     pub fn get_crossings(&self) -> AHashSet<(u32, u32)> 
     {
 
