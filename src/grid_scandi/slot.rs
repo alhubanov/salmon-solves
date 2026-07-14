@@ -6,13 +6,16 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::cell::Ref;
 
-use crate::grid_scandi::LayoutError;
-use crate::grid_scandi::clue;
-use crate::grid_scandi::gridcell::GridCell;
-
 use crate::grid_scandi::gridcell::CellType;
+use crate::grid_scandi::slot::CellType::Letter;
+use crate::grid_scandi::slot::CellType::Clue;
+use crate::grid_scandi::clue;
 use crate::grid_scandi::letter;
+
+use crate::grid_scandi::LayoutError;
+use crate::grid_scandi::gridcell::GridCell;
 use crate::grid_scandi::slot_candidate::SlotCandidate;
+use crate::grid_scandi::dictionary::Dictionary;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize, Copy, Clone, Hash)]
 pub enum SlotDirection {
@@ -28,7 +31,7 @@ pub struct Slot {
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
     associated_clue_cell: Rc<RefCell<GridCell>>,
     selected_word: Option<String>,
-    available_candidates: Rc<RefCell<Vec<SlotCandidate>>>,
+    dictionary: Rc<RefCell<Dictionary>>,
     available_discarded_candidates: Vec<String>
 }
 
@@ -37,7 +40,7 @@ impl Slot {
         slot_id: u32,
         slot_cells: Vec<Rc<RefCell<GridCell>>>,
         associated_clue_cell: Rc<RefCell<GridCell>>,
-        available_candidates: Rc<RefCell<Vec<SlotCandidate>>>
+        dictionary: Rc<RefCell<Dictionary>>
     ) 
     -> Self 
     {
@@ -50,14 +53,14 @@ impl Slot {
             slot_cells,
             associated_clue_cell,
             selected_word, 
-            available_candidates, 
+            dictionary, 
             available_discarded_candidates
         }
     }
 
-    pub fn get_suitable_word_set(&self) -> Ref<'_, Vec<SlotCandidate>> 
+    pub fn get_suitable_word_set(&self) -> Ref<'_, Vec<SlotCandidate>>
     {
-        self.available_candidates.borrow()
+        Ref::map(self.dictionary.borrow(), |dict| dict.get_words_for_length(self.slot_cells.len()))
     }
 
     pub fn get_slot_id(&self) -> u32 
@@ -97,51 +100,74 @@ impl Slot {
     }
 
     pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
-    {    
-        let borrowed_available_candidates = self.available_candidates.borrow();
-        let mut suitable_candidates: Vec<&SlotCandidate> = borrowed_available_candidates
-                                                .iter()
-                                                .filter(|candidate| 
-                                                            candidate.get_assigned_slot_id() == None &&
-                                                            candidate.get_conflicts().iter().map(|conflict| conflict.get_restricted_slot_id()).all(|restricted_id| restricted_id != self.slot_id) &&  
-                                                            !self.available_discarded_candidates.contains(candidate.get_word()) && 
-                                                            !already_attempted_words.contains(candidate.get_word()))
-                                                .collect();
+    {   
+        let word_len = self.slot_cells.len();
+        let mut pattern = vec![None; word_len]; 
 
-        if suitable_candidates.is_empty() { return Err(LayoutError::NoPossibleDomain); }
+        for (idx, cell) in self.slot_cells.iter().enumerate()
+        {
+            let borrowed_cell = cell.borrow();
+            match &borrowed_cell.cell 
+            {
+                Some(Letter(letter)) => pattern[idx] = Some(letter.get_cell_value()),
+                Some(Clue(_)) => panic!("Encountered clue cell in slot cells."),
+                None => pattern[idx] = None,
+            }
+        }
+
+        println!("Pattern to get candidates for {:?}", pattern);
+        let borrowed_dictionary = self.dictionary.borrow_mut();
+        let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
+
+        let mut filtered_suitable_candidates: Vec<&SlotCandidate> = suitable_candidates
+            .into_iter()
+            .filter(|candidate| 
+                        candidate.get_assigned_slot_id() == None &&
+                        // candidate.get_conflicts().iter().map(|conflict| conflict.get_restricted_slot_id()).all(|restricted_id| restricted_id != self.slot_id) &&  
+                        !self.available_discarded_candidates.contains(candidate.get_word()) && 
+                        !already_attempted_words.contains(candidate.get_word()))
+            .collect();
+
+        if filtered_suitable_candidates.is_empty() { return Err(LayoutError::NoPossibleDomain); }
         
-        suitable_candidates.sort();
-        let idx = rng.random_range(0..suitable_candidates.len());
-        let sampled_word = suitable_candidates[idx].get_word().clone();
+        filtered_suitable_candidates.sort();
+        let idx = rng.random_range(0..filtered_suitable_candidates.len());
+        let sampled_word = filtered_suitable_candidates[idx].get_word().clone();
 
         return Ok(sampled_word);
     }
 
-    fn determine_crossing_points(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> Vec<(usize, u8)> 
+    fn get_prospective_pattern(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> Vec<Option<char>> 
     {
-        self.slot_cells
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, cell)| {
-                if cell.borrow().slot_ids.as_ref().is_some_and(|ids| ids.contains(&slot_id)) 
+        let mut pattern = Vec::new();
+        for cell in self.slot_cells.iter()
+        {
+            if cell.borrow().slot_ids.as_ref().is_some_and(|ids| ids.contains(&slot_id)) 
+            {
+                pattern.push(Some(nominated_word.as_bytes()[idx_of_crossing_letter as usize] as char));
+            }
+            else 
+            {
+                let borrowed_cell = cell.borrow();
+                match &borrowed_cell.cell 
                 {
-                    Some((idx, nominated_word.as_bytes()[idx_of_crossing_letter as usize]))
-                } 
-                else 
-                {
-                    None
+                    Some(Letter(letter)) => pattern.push(Some(letter.get_cell_value())),
+                    Some(Clue(_)) => panic!("Encountered clue cell in slot cells."),
+                    None => pattern.push(None),
                 }
-            })
-            .collect()
+            }
+        }
+
+        return pattern;
     }
 
-    pub fn remove_slot_candidate_restrictions(&mut self, slot_id: u32) 
-    {
-        for candidate in self.available_candidates.borrow_mut().iter_mut() 
-        {
-            candidate.remove_restrictions(self.slot_id, slot_id);
-        }
-    }
+    // pub fn remove_slot_candidate_restrictions(&mut self, slot_id: u32) 
+    // {
+    //     for candidate in self.available_candidates.borrow_mut().iter_mut() 
+    //     {
+    //         candidate.remove_restrictions(self.slot_id, slot_id);
+    //     }
+    // }
 
     pub fn has_possibilities_remaining(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
     {
@@ -149,45 +175,36 @@ impl Slot {
             return true;
         }
 
-        let required_letters = self.determine_crossing_points(slot_id, nominated_word, idx_of_crossing_letter);
-
-        let borrowed_available_candidates = self.available_candidates.borrow(); 
-        let num_suitable_words = borrowed_available_candidates.iter()
-                                                .filter(
-                                                    |candidate| 
-                                                    {
-                                                        !candidate.get_conflicts().iter().map(|conflict| conflict.get_restricted_slot_id()).any(|restricted_id| restricted_id == slot_id) &&
-                                                        required_letters.iter().all(|&(idx, letter)| candidate.get_word().as_bytes()[idx] == letter)
-                                                    })
-                                                .count();
-
-        num_suitable_words > 0
+        let pattern = self.get_prospective_pattern(slot_id, nominated_word, idx_of_crossing_letter);
+        self.dictionary.borrow().get_candidates(self.slot_cells.len(), &pattern).len() > 0
     }
 
-    pub fn apply_restrictions(&mut self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> () 
-    {
-        let required = self.determine_crossing_points(slot_id, nominated_word, idx_of_crossing_letter);
-        if required.is_empty() {
-            return;
-        }
+    // pub fn apply_restrictions(&mut self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> () 
+    // {
+    //     let required = self.determine_crossing_points(slot_id, nominated_word, idx_of_crossing_letter);
+    //     if required.is_empty() {
+    //         return;
+    //     }
 
-        let mut borrowed_available_candidates = self.available_candidates.borrow_mut(); 
-        for candidate in borrowed_available_candidates.iter_mut() 
-        {
-            let bytes = candidate.get_word().as_bytes();
-            let mismatched = required.iter().any(|&(idx, letter)| bytes[idx] != letter);
-            if mismatched 
-            {
-                candidate.record_conflict(self.slot_id, slot_id);
-            }
-        };
-    }
+    //     let mut borrowed_available_candidates = self.available_candidates.borrow_mut(); 
+    //     for candidate in borrowed_available_candidates.iter_mut() 
+    //     {
+    //         let bytes = candidate.get_word().as_bytes();
+    //         let mismatched = required.iter().any(|&(idx, letter)| bytes[idx] != letter);
+    //         if mismatched 
+    //         {
+    //             candidate.record_conflict(self.slot_id, slot_id);
+    //         }
+    //     };
+    // }
 
     pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String) -> () 
     {   
+        let mut dictionary = self.dictionary.borrow_mut();
+
         // Assume a valid candidate always exists     
-        if let Some(candidate) = self.available_candidates
-                                     .borrow_mut()
+        if let Some(candidate) = dictionary
+                                     .get_words_for_length_mut(self.slot_cells.len())
                                      .iter_mut()
                                      .find(|candidate| candidate.get_word() == &nominated_word)
         {
@@ -219,10 +236,11 @@ impl Slot {
         if self.selected_word != None 
         {
             self.available_discarded_candidates.push(self.selected_word.clone().unwrap());
+            let mut dictionary = self.dictionary.borrow_mut();
 
             // Assume a valid candidate always exists   
-            if let Some(candidate) = self.available_candidates
-                                     .borrow_mut()
+            if let Some(candidate) = dictionary
+                                     .get_words_for_length_mut(self.slot_cells.len())
                                      .iter_mut()
                                      .find(|candidate| candidate.get_word() == &self.selected_word.clone().unwrap())
             {
