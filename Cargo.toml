@@ -14,6 +14,7 @@ chacha20 = "0.10.1"
 ahash = "0.8.12"
 criterion-perf-events = "0.4.0"
 perfcnt = "0.8.0"
+fixedbitset = "0.5.7"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

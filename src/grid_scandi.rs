@@ -2,7 +2,7 @@ use std::cmp::max;
 use rand::{prelude::*};
 use rand::rand_core::Rng;
 
-use ahash::{AHashSet,AHashMap};
+use ahash::{AHashSet};
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -17,16 +17,14 @@ mod letter;
 mod gridcell;
 mod slot;
 mod slot_candidate;
+mod dictionary;
 
 use slot::Slot;
 use slot::SlotDirection;
-use gridcell::GridCell;
+use gridcell::{GridCell, PossibleCellState};
+use dictionary::Dictionary;
 use crate::grid::LayoutError;
-use crate::grid_scandi::gridcell::PossibleCellState;
 use crate::grid::Grid;
-use crate::grid_scandi::slot_candidate::SlotCandidate;
-
-static WORDS: &str = include_str!("../word_files/common_english_words.txt");
 
 mod constants {
     pub const TARGET_CLUE_DENSITY : f32                        = 0.25;
@@ -36,6 +34,8 @@ mod constants {
     pub const PER_LETTER_LENGTH_PRESSURE : f32                 = 0.08;
     pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
 }
+
+static WORDS: &str = include_str!("../word_files/common_english_words.txt");
 
 pub struct ScandiGrid {
     width: u32,
@@ -70,20 +70,9 @@ impl Grid for ScandiGrid {
 
     fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        let mut slot_candidate_collections_per_length : AHashMap<u32, Rc<RefCell<Vec<SlotCandidate>>>> = AHashMap::new();
+        let dictionary = Rc::new(RefCell::new(Dictionary::build(WORDS)));
 
-
-        let words_vec : Vec<&str> = WORDS.lines().collect();
-        for word in words_vec 
-        {
-            slot_candidate_collections_per_length
-                .entry(word.len() as u32)
-                .or_default()
-                .borrow_mut()
-                .push(SlotCandidate::new(word.to_string()));
-        }
-
-        self.create_all_slots(&slot_candidate_collections_per_length, rng);
+        self.create_all_slots(&dictionary, rng);
         self.fill_grid(rng)?;
 
         Ok(())
@@ -209,7 +198,7 @@ impl ScandiGrid {
                     vertical_idx: u32, 
                     horizontal_idx: u32, 
                     slot_id: &mut u32, 
-                    slot_candidate_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<SlotCandidate>>>>,
+                    dictionary: &Rc<RefCell<Dictionary>>,
                     encountered_clue_cell: bool,
                     orientation: &str)  
     {
@@ -224,12 +213,12 @@ impl ScandiGrid {
         
         if word_length == 0 { return; }
 
-        if !slot_candidate_collections_per_length.contains_key(&(word_length as u32)) {
+        if !dictionary.borrow().get_words().contains_key(&(word_length as usize)) {
             // TODO: backtrack here instead of panicking
             panic!("Cannot fill slot at all.");
         }
 
-        let available_candidates = Rc::clone(&slot_candidate_collections_per_length[&(word_length as u32)]);
+        let available_candidates = Rc::clone(dictionary);
         let slot = Slot::new(
                     *slot_id,
                     slot_cells,
@@ -241,7 +230,7 @@ impl ScandiGrid {
         *slot_id += 1;
     }
 
-    fn create_all_slots(&mut self, slot_candidate_collections_per_length : &AHashMap<u32, Rc<RefCell<Vec<SlotCandidate>>>>, rng: &mut dyn Rng) -> () 
+    fn create_all_slots(&mut self, dictionary: &Rc<RefCell<Dictionary>>, rng: &mut dyn Rng) -> () 
     {
         let mut slot_id : u32 = 0;
         for vertical_idx in 0..self.height 
@@ -264,18 +253,18 @@ impl ScandiGrid {
                 {
                     if encountered_clue_cell || at_end_of_height 
                     {
-                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, slot_candidate_collections_per_length, encountered_clue_cell, "vertical");
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, dictionary, encountered_clue_cell, "vertical");
                     }
 
                     if encountered_clue_cell || at_end_of_width 
                     {
-                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, slot_candidate_collections_per_length, encountered_clue_cell, "horizontal");
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, dictionary, encountered_clue_cell, "horizontal");
                     }
                 }
             }
         }
 
-        self.word_slots.sort_by(|slot1, slot2| slot1.get_suitable_word_set().len().cmp(&slot2.get_suitable_word_set().len()));
+        self.word_slots.sort_by(|slot1, slot2| (*slot1.get_suitable_word_set()).len().cmp(&(*slot2.get_suitable_word_set()).len()));
     }
 
     fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
@@ -304,12 +293,6 @@ impl ScandiGrid {
 
             self.get_slot(slot_id).unwrap().place_nominated_word_and_associated_clue(nominated_word.clone());
 
-            for (idx, crossing_id) in slot_crossing_ids 
-            {
-                let crossing_slot = self.get_slot(crossing_id);
-                crossing_slot.unwrap().apply_restrictions(slot_id, &nominated_word, idx);
-            }
-        
             return Ok(());
         };
     }
@@ -339,13 +322,6 @@ impl ScandiGrid {
                 // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
 
                 let crossing_ids : AHashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
-                // let mut candidates : AHashSet<&u32> = crossing_ids.difference(already_tried).collect();
-                // if candidates.is_empty() 
-                // {
-                //     already_tried.clear();
-                //     candidates = crossing_ids.iter().collect();
-                // }
-
                 let mut candidates: Vec<u32> = crossing_ids.iter()
                                                            .filter(|id| {
                                                                let slot = self.get_slot(**id);
@@ -359,16 +335,17 @@ impl ScandiGrid {
                 let idx = rng.random_range(0..candidates.len());
                 let crossing_id = candidates[idx];
 
+                // Snapshot which slots currently hold a placed word BEFORE deallocating,
+                // so deallocation can tell which shared cells are still owned by an active crossing.
+                let placed_word_slot_ids: AHashSet<u32> = self.word_slots.iter()
+                    .filter(|s| s.has_placed_word() && s.get_slot_id() != crossing_id)
+                    .map(|s| s.get_slot_id())
+                    .collect();
 
                 let mut crossing_slot = self.get_slot(crossing_id);
-                crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
-
-                let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
-                for (_, id) in secondary_crossing_ids 
-                {
-                    let secondary_crossing_slot = self.get_slot(id);
-                    secondary_crossing_slot.unwrap().remove_slot_candidate_restrictions(crossing_id);
-                }
+                crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
+                    |id| placed_word_slot_ids.contains(&id)
+                );
 
                 // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
 
