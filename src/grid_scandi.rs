@@ -299,7 +299,6 @@ impl ScandiGrid {
 
     fn fill_grid(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        // let mut already_tried_backtrackings_per_slot : AHashMap<u32, AHashSet<u32>> = AHashMap::new();
         let mut slot_stack : Vec<u32> = Vec::new();
         for idx_to_add_to_stack in 0..self.word_slots.len() 
         {
@@ -318,8 +317,6 @@ impl ScandiGrid {
                 }
 
                 slot_stack.push(curr_slot_id);
-
-                // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
 
                 let crossing_ids : AHashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
                 let mut candidates: Vec<u32> = crossing_ids.iter()
@@ -346,8 +343,6 @@ impl ScandiGrid {
                 crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
                     |id| placed_word_slot_ids.contains(&id)
                 );
-
-                // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
 
                 slot_stack.push(crossing_id);
             }
