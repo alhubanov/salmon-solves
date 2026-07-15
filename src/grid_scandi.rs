@@ -72,17 +72,6 @@ impl Grid for ScandiGrid {
     {
         let dictionary = Rc::new(RefCell::new(Dictionary::build(WORDS)));
 
-        // let mut slot_candidate_collections_per_length : AHashMap<u32, Rc<RefCell<Vec<SlotCandidate>>>> = AHashMap::new();
-        // let words_vec : Vec<&str> = WORDS.lines().collect();
-        // for word in words_vec 
-        // {
-        //     slot_candidate_collections_per_length
-        //         .entry(word.len() as u32)
-        //         .or_default()
-        //         .borrow_mut()
-        //         .push(SlotCandidate::new(word.to_string()));
-        // }
-
         self.create_all_slots(&dictionary, rng);
         self.fill_grid(rng)?;
 
@@ -238,8 +227,6 @@ impl ScandiGrid {
                 );
 
         self.word_slots.push(slot);
-
-        println!("Created slot {} ending at {}, {}", slot_id, vertical_idx, horizontal_idx);
         *slot_id += 1;
     }
 
@@ -304,22 +291,14 @@ impl ScandiGrid {
                 }
             }
 
-            println!("Nominating word: {}", nominated_word);
             self.get_slot(slot_id).unwrap().place_nominated_word_and_associated_clue(nominated_word.clone());
 
-            // for (idx, crossing_id) in slot_crossing_ids 
-            // {
-            //     let crossing_slot = self.get_slot(crossing_id);
-            //     crossing_slot.unwrap().apply_restrictions(slot_id, &nominated_word, idx);
-            // }
-        
             return Ok(());
         };
     }
 
     fn fill_grid(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        println!("Filling grid");
         // let mut already_tried_backtrackings_per_slot : AHashMap<u32, AHashSet<u32>> = AHashMap::new();
         let mut slot_stack : Vec<u32> = Vec::new();
         for idx_to_add_to_stack in 0..self.word_slots.len() 
@@ -330,11 +309,9 @@ impl ScandiGrid {
         while !slot_stack.is_empty() 
         {
             let curr_slot_id = slot_stack.pop().unwrap();
-            println!("Trying slot id {}", curr_slot_id);
             
             if let Err(crossings) = self.fill_slot(curr_slot_id, rng) 
             {
-                println!("Failed to place word");
                 if crossings.is_empty() 
                 {
                     return Err(LayoutError::NoPossibleDomainAfterRecursion);
@@ -345,13 +322,6 @@ impl ScandiGrid {
                 // let already_tried = already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default();
 
                 let crossing_ids : AHashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
-                // let mut candidates : AHashSet<&u32> = crossing_ids.difference(already_tried).collect();
-                // if candidates.is_empty() 
-                // {
-                //     already_tried.clear();
-                //     candidates = crossing_ids.iter().collect();
-                // }
-
                 let mut candidates: Vec<u32> = crossing_ids.iter()
                                                            .filter(|id| {
                                                                let slot = self.get_slot(**id);
@@ -365,17 +335,17 @@ impl ScandiGrid {
                 let idx = rng.random_range(0..candidates.len());
                 let crossing_id = candidates[idx];
 
+                // Snapshot which slots currently hold a placed word BEFORE deallocating,
+                // so deallocation can tell which shared cells are still owned by an active crossing.
+                let placed_word_slot_ids: AHashSet<u32> = self.word_slots.iter()
+                    .filter(|s| s.has_placed_word() && s.get_slot_id() != crossing_id)
+                    .map(|s| s.get_slot_id())
+                    .collect();
 
-                println!("About to deallocate slot {}", crossing_id);
                 let mut crossing_slot = self.get_slot(crossing_id);
-                crossing_slot.as_mut().unwrap().deallocate_and_discard_word();
-
-                // let secondary_crossing_ids = crossing_slot.unwrap().get_crossings();
-                // for (_, id) in secondary_crossing_ids 
-                // {
-                //     let secondary_crossing_slot = self.get_slot(id);
-                //     secondary_crossing_slot.unwrap().remove_slot_candidate_restrictions(crossing_id);
-                // }
+                crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
+                    |id| placed_word_slot_ids.contains(&id)
+                );
 
                 // already_tried_backtrackings_per_slot.entry(curr_slot_id).or_default().insert(crossing_id);
 

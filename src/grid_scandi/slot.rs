@@ -115,7 +115,6 @@ impl Slot {
             }
         }
 
-        println!("Pattern to get candidates for {:?}", pattern);
         let borrowed_dictionary = self.dictionary.borrow_mut();
         let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
 
@@ -161,14 +160,6 @@ impl Slot {
         return pattern;
     }
 
-    // pub fn remove_slot_candidate_restrictions(&mut self, slot_id: u32) 
-    // {
-    //     for candidate in self.available_candidates.borrow_mut().iter_mut() 
-    //     {
-    //         candidate.remove_restrictions(self.slot_id, slot_id);
-    //     }
-    // }
-
     pub fn has_possibilities_remaining(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
     {
         if self.selected_word.is_some() {
@@ -178,25 +169,6 @@ impl Slot {
         let pattern = self.get_prospective_pattern(slot_id, nominated_word, idx_of_crossing_letter);
         self.dictionary.borrow().get_candidates(self.slot_cells.len(), &pattern).len() > 0
     }
-
-    // pub fn apply_restrictions(&mut self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> () 
-    // {
-    //     let required = self.determine_crossing_points(slot_id, nominated_word, idx_of_crossing_letter);
-    //     if required.is_empty() {
-    //         return;
-    //     }
-
-    //     let mut borrowed_available_candidates = self.available_candidates.borrow_mut(); 
-    //     for candidate in borrowed_available_candidates.iter_mut() 
-    //     {
-    //         let bytes = candidate.get_word().as_bytes();
-    //         let mismatched = required.iter().any(|&(idx, letter)| bytes[idx] != letter);
-    //         if mismatched 
-    //         {
-    //             candidate.record_conflict(self.slot_id, slot_id);
-    //         }
-    //     };
-    // }
 
     pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String) -> () 
     {   
@@ -225,11 +197,24 @@ impl Slot {
         self.selected_word = Some(nominated_word);
     }
 
-    pub fn deallocate_and_discard_word(&mut self) -> () 
+    pub fn deallocate_and_discard_word<F>(&mut self, crossing_slot_has_word: F) -> ()
+    where
+        F: Fn(u32) -> bool,
     {
         for cell in self.slot_cells.iter() 
         {
-            cell.borrow_mut().cell = None;
+            let borrowed = cell.borrow();
+            let owned_by_active_crossing = borrowed.slot_ids
+                .as_ref()
+                .map(|ids| ids.iter().any(|&id| id != self.slot_id && crossing_slot_has_word(id)))
+                .unwrap_or(false);
+
+            drop(borrowed);
+
+            if !owned_by_active_crossing 
+            {
+                cell.borrow_mut().cell = None;
+            }
         }
 
         // It is not clear to me whether discarding words permanently is good enough here.

@@ -48,7 +48,7 @@ use rand;
 fn grid_is_valid()
 {
     let mut rng = rand::rng();
-    let mut grid = ScandiGrid::initialize(5, 5);
+    let mut grid = ScandiGrid::initialize(6, 6);
     grid.construct(&mut rng).ok();
 
     let words_vec : Vec<&str> = WORDS.lines().collect();
