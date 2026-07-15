@@ -17,7 +17,7 @@ use perfcnt::linux::PerfCounterBuilderLinux as Builder;
 // In case of a 'permission denied' error: sudo sh -c 'echo 1 >/proc/sys/kernel/perf_event_paranoid'
 fn criterion_benchmark(c: &mut Criterion<Perf>) 
 {
-    let mut group = c.benchmark_group("grid_6x6_all_seeds");
+    let mut group = c.benchmark_group("grid_8x8_all_seeds");
     group.sample_size(100);
     group.noise_threshold(0.05);
     group.significance_level(0.02);
@@ -26,14 +26,14 @@ fn criterion_benchmark(c: &mut Criterion<Perf>)
     {
         group.bench_with_input
         (
-            BenchmarkId::new("grid 6x6", seed),
+            BenchmarkId::new("grid 8x8", seed),
             &seed,
             |b, &seed| 
             {
                 b.iter_batched
                 (
                     || ChaCha8Rng::seed_from_u64(seed),
-                    |mut rng| { build_crossword_grid_for_command_line::<ScandiGrid>(black_box(6), black_box(6), &mut rng) },
+                    |mut rng| { build_crossword_grid_for_command_line::<ScandiGrid>(black_box(8), black_box(8), &mut rng) },
                     criterion::BatchSize::PerIteration
                 );
             },

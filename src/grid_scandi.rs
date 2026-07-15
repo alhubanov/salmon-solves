@@ -264,7 +264,8 @@ impl ScandiGrid {
             }
         }
 
-        self.word_slots.sort_by(|slot1, slot2| (*slot1.get_suitable_word_set()).len().cmp(&(*slot2.get_suitable_word_set()).len()));
+        // self.word_slots.sort_by(|slot1, slot2| (*slot1.get_suitable_word_set()).len().cmp(&(*slot2.get_suitable_word_set()).len()));
+        self.word_slots.sort_by_key(|slot| slot.get_crossings().len());
     }
 
     fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
