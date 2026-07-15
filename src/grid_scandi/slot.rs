@@ -68,11 +68,13 @@ impl Slot {
         self.slot_id
     }
 
+    #[cfg(test)]
     pub fn get_selected_word(&self) -> &Option<String>
     {
         &self.selected_word
     }
 
+    #[cfg(test)]
     pub fn get_cells(&self) -> &Vec<Rc<RefCell<GridCell>>>
     {
         &self.slot_cells
