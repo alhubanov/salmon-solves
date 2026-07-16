@@ -27,11 +27,6 @@ impl LengthCollection
         &mut self.words
     }
 
-    fn get_words(&self) -> &Vec<SlotCandidate>
-    {
-        &self.words
-    }
-
     fn build(words: Vec<SlotCandidate>, length: usize) -> Self 
     {
         let n = words.len();
@@ -119,11 +114,6 @@ impl Dictionary
     pub fn get_words_for_length_mut(&mut self, length: usize) -> &mut Vec<SlotCandidate>
     {
         self.words_per_length.get_mut(&length).unwrap().get_words_mut()
-    }
-
-    pub fn get_words_for_length(&self, length: usize) -> &Vec<SlotCandidate>
-    {
-        self.words_per_length.get(&length).unwrap().get_words()
     }
 
     pub fn get_words(&self) -> &AHashMap<usize, LengthCollection>

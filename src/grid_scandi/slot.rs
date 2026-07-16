@@ -4,7 +4,6 @@ use ahash::{AHashSet};
 
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::cell::Ref;
 
 use crate::grid_scandi::gridcell::CellType;
 use crate::grid_scandi::slot::CellType::Letter;
@@ -58,11 +57,6 @@ impl Slot {
         }
     }
 
-    pub fn get_suitable_word_set(&self) -> Ref<'_, Vec<SlotCandidate>>
-    {
-        Ref::map(self.dictionary.borrow(), |dict| dict.get_words_for_length(self.slot_cells.len()))
-    }
-
     pub fn get_slot_id(&self) -> u32 
     {
         self.slot_id
@@ -101,8 +95,8 @@ impl Slot {
         self.selected_word.is_some()
     }
 
-    pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
-    {   
+    pub fn get_current_pattern(&self) -> Vec<Option<char>>
+    {
         let word_len = self.slot_cells.len();
         let mut pattern = vec![None; word_len]; 
 
@@ -116,6 +110,25 @@ impl Slot {
                 None => pattern[idx] = None,
             }
         }
+
+        return pattern;
+    }
+
+    pub fn get_current_candidate_count(&self) -> usize
+    {
+        let word_len = self.slot_cells.len();
+        let pattern = self.get_current_pattern();
+
+        let borrowed_dictionary = self.dictionary.borrow_mut();
+        let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
+
+        suitable_candidates.len()
+    }
+
+    pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
+    {   
+        let word_len = self.slot_cells.len();
+        let pattern = self.get_current_pattern();
 
         let borrowed_dictionary = self.dictionary.borrow_mut();
         let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);

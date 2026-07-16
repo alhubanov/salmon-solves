@@ -300,24 +300,21 @@ impl ScandiGrid {
 
     fn fill_grid(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
-        let mut slot_stack : Vec<u32> = Vec::new();
-        for idx_to_add_to_stack in 0..self.word_slots.len() 
+        while self.word_slots.iter().filter(|slot| !slot.has_placed_word()).peekable().peek().is_some()
         {
-            slot_stack.push(self.word_slots[idx_to_add_to_stack].get_slot_id()); 
-        }
+            // pick the slot with feweste candidates left
+            let curr_slot_id = self.word_slots.iter()
+                                              .filter(|slot| !slot.has_placed_word())
+                                              .min_by_key(|slot| { slot.get_current_candidate_count() })
+                                              .map(|slot| slot.get_slot_id())
+                                              .unwrap();
 
-        while !slot_stack.is_empty() 
-        {
-            let curr_slot_id = slot_stack.pop().unwrap();
-            
             if let Err(crossings) = self.fill_slot(curr_slot_id, rng) 
             {
                 if crossings.is_empty() 
                 {
                     return Err(LayoutError::NoPossibleDomainAfterRecursion);
                 }
-
-                slot_stack.push(curr_slot_id);
 
                 let crossing_ids : AHashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
                 let mut candidates: Vec<u32> = crossing_ids.iter()
@@ -344,8 +341,6 @@ impl ScandiGrid {
                 crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
                     |id| placed_word_slot_ids.contains(&id)
                 );
-
-                slot_stack.push(crossing_id);
             }
         }
 
