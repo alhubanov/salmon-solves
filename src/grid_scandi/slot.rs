@@ -151,14 +151,14 @@ impl Slot {
         return Ok(sampled_word);
     }
 
-    fn get_prospective_pattern(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> Vec<Option<char>> 
+    fn get_prospective_pattern(&self, slot_id: u32, letter: char) -> Vec<Option<char>> 
     {
         let mut pattern = Vec::new();
         for cell in self.slot_cells.iter()
         {
             if cell.borrow().slot_ids.as_ref().is_some_and(|ids| ids.contains(&slot_id)) 
             {
-                pattern.push(Some(nominated_word.as_bytes()[idx_of_crossing_letter as usize] as char));
+                pattern.push(Some(letter));
             }
             else 
             {
@@ -172,17 +172,28 @@ impl Slot {
             }
         }
 
-        return pattern;
+        pattern
     }
 
-    pub fn has_possibilities_remaining(&self, slot_id: u32, nominated_word: &String, idx_of_crossing_letter: u32) -> bool 
+    pub fn get_remaining_word_candidates(&self, slot_id: u32, domain: &AHashSet<String>, idx_of_crossing_letter: u32) -> AHashSet<String>
     {
-        if self.selected_word.is_some() {
-            return true;
+        let distinct_letters: AHashSet<char> = domain.iter()
+                                                     .map(|word| word.as_bytes()[idx_of_crossing_letter as usize] as char)
+                                                     .collect();
+
+        let mut candidates : AHashSet<String> = AHashSet::new();
+        for letter in distinct_letters
+        {
+            let pattern = self.get_prospective_pattern(slot_id, letter);
+            let candidates_for_letter : AHashSet<String> = self.dictionary.borrow()
+                                                                          .get_candidates(self.slot_cells.len(), &pattern)
+                                                                          .iter()
+                                                                          .map(|slot_candidate| slot_candidate.get_word().clone())
+                                                                          .collect();
+            candidates.extend(candidates_for_letter);
         }
 
-        let pattern = self.get_prospective_pattern(slot_id, nominated_word, idx_of_crossing_letter);
-        self.dictionary.borrow().get_candidates(self.slot_cells.len(), &pattern).len() > 0
+        candidates
     }
 
     pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String) -> () 

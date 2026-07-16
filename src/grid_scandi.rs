@@ -1,4 +1,5 @@
 use std::cmp::max;
+use std::collections::VecDeque;
 use rand::{prelude::*};
 use rand::rand_core::Rng;
 
@@ -268,28 +269,71 @@ impl ScandiGrid {
         self.word_slots.sort_by_key(|slot| slot.get_crossings().len());
     }
 
+    fn propagate_changes_across_crossing_slots(&mut self, slot_id: u32, domain: AHashSet<String>, max_depth: u32) -> bool 
+    {
+        let domain = Rc::new(domain);
+        let mut visited: AHashSet<u32> = AHashSet::new();
+        visited.insert(slot_id);
+
+        let mut propagation_queue : VecDeque<((u32, u32), u32, Rc<AHashSet<String>>, u32)> = self.get_slot(slot_id)
+                                                                                                 .unwrap()
+                                                                                                 .get_crossings()
+                                                                                                 .into_iter()
+                                                                                                 .map(|(a, b)| ((a, b), slot_id, Rc::clone(&domain), 1))
+                                                                                                 .collect();
+        while !propagation_queue.is_empty() 
+        {
+            let ((idx, slot_id_to_propagate_to), origin_id, restricting_domain, depth) = propagation_queue.pop_front().unwrap();
+
+            if depth > max_depth || !visited.insert(slot_id_to_propagate_to) 
+            {
+                continue;
+            }
+
+            let curr_slot = self.get_slot(slot_id_to_propagate_to).unwrap();
+            let remaining_word_candidates = Rc::new(curr_slot.get_remaining_word_candidates(origin_id, &restricting_domain, idx));
+
+            if remaining_word_candidates.len() == 0
+            {
+                return false;
+            }
+
+            if curr_slot.get_current_candidate_count() == remaining_word_candidates.len()
+            {
+                continue;
+            }
+
+            let tuples_to_propagate : VecDeque<((u32, u32), u32, Rc<AHashSet<String>>, u32)> = curr_slot
+                .get_crossings()
+                .into_iter()
+                .filter(|(_, crossing_id)| *crossing_id != origin_id)
+                .map(|(a, b)| ((a, b), slot_id_to_propagate_to, Rc::clone(&remaining_word_candidates), depth + 1))
+                .collect();
+            propagation_queue.extend(tuples_to_propagate);
+        }
+
+        true
+    }
+
     fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
     {
-        let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
         let mut already_attempted_words = AHashSet::new();
 
         'selections: loop 
         {
+            let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
             let nominated_word = match self.get_slot(slot_id).unwrap().nominate_word(&already_attempted_words, rng) 
             {
                 Ok(word) => word,
                 Err(_) => return Err(slot_crossing_ids)
             };
 
-            for (idx, crossing_id) in &slot_crossing_ids 
+            let mut domain = AHashSet::new();
+            domain.insert(nominated_word.clone());
+            if !self.propagate_changes_across_crossing_slots(slot_id, domain, 3)
             {
-                let crossing_slot = self.get_slot(*crossing_id).unwrap();
-
-                if !crossing_slot.has_possibilities_remaining(slot_id, &nominated_word, *idx) 
-                {
-                    already_attempted_words.insert(nominated_word.clone());
-                    continue 'selections;
-                }
+                already_attempted_words.insert(nominated_word.clone());
+                continue 'selections;
             }
 
             self.get_slot(slot_id).unwrap().place_nominated_word_and_associated_clue(nominated_word.clone());
