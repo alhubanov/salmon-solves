@@ -31,7 +31,8 @@ pub struct Slot {
     associated_clue_cell: Rc<RefCell<GridCell>>,
     selected_word: Option<String>,
     dictionary: Rc<RefCell<Dictionary>>,
-    available_discarded_candidates: Vec<String>
+    available_discarded_candidates: Vec<String>,
+    placement_order: Option<usize>,
 }
 
 impl Slot {
@@ -46,20 +47,33 @@ impl Slot {
 
         let selected_word = None;
         let available_discarded_candidates = Vec::new();
+        let placement_order = None;
 
-        Self { 
+        Self 
+        { 
             slot_id, 
             slot_cells,
             associated_clue_cell,
             selected_word, 
             dictionary, 
-            available_discarded_candidates
+            available_discarded_candidates,
+            placement_order
         }
     }
 
     pub fn get_slot_id(&self) -> u32 
     {
         self.slot_id
+    }
+
+    pub fn get_placement_order(&self) -> i32
+    {
+        if self.placement_order == None
+        {
+            return -1;
+        }
+
+        self.placement_order.unwrap() as i32
     }
 
     #[cfg(test)]
@@ -196,7 +210,7 @@ impl Slot {
         candidates
     }
 
-    pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String) -> () 
+    pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String, placement_order: usize) -> () 
     {   
         let mut dictionary = self.dictionary.borrow_mut();
 
@@ -221,6 +235,7 @@ impl Slot {
         self.associated_clue_cell.borrow_mut().cell = Some(CellType::Clue(clue::Clue::new(&"".to_string())));
 
         self.selected_word = Some(nominated_word);
+        self.placement_order = Some(placement_order);
     }
 
     pub fn deallocate_and_discard_word<F>(&mut self, crossing_slot_has_word: F) -> ()

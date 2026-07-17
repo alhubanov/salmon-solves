@@ -95,17 +95,9 @@ impl Grid for ScandiGrid {
 
 impl ScandiGrid {
 
-    fn get_slot(&mut self, slot_id: u32) -> Option<&mut Slot> 
+    fn get_slot_mut(&mut self, slot_id: u32) -> Option<&mut Slot> 
     {
-        for slot in &mut self.word_slots {
-
-            let curr_slot_id = slot.get_slot_id();
-            if curr_slot_id == slot_id {
-                return Some(slot);
-            }
-        }
-
-        None
+        self.word_slots.iter_mut().find(|slot| slot.get_slot_id() == slot_id)
     }
 
     fn get_len_and_associated_clue_coords(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, orientation: &str) -> Result<(i32, u32, u32), LayoutError> 
@@ -275,7 +267,7 @@ impl ScandiGrid {
         let mut visited: AHashSet<u32> = AHashSet::new();
         visited.insert(slot_id);
 
-        let mut propagation_queue : VecDeque<((u32, u32), u32, Rc<AHashSet<String>>, u32)> = self.get_slot(slot_id)
+        let mut propagation_queue : VecDeque<((u32, u32), u32, Rc<AHashSet<String>>, u32)> = self.get_slot_mut(slot_id)
                                                                                                  .unwrap()
                                                                                                  .get_crossings()
                                                                                                  .into_iter()
@@ -290,7 +282,7 @@ impl ScandiGrid {
                 continue;
             }
 
-            let curr_slot = self.get_slot(slot_id_to_propagate_to).unwrap();
+            let curr_slot = self.get_slot_mut(slot_id_to_propagate_to).unwrap();
             let remaining_word_candidates = Rc::new(curr_slot.get_remaining_word_candidates(origin_id, &restricting_domain, idx));
 
             if remaining_word_candidates.len() == 0
@@ -315,14 +307,14 @@ impl ScandiGrid {
         true
     }
 
-    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng) -> Result<(), AHashSet<(u32, u32)>> 
+    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng, placement_order: &mut usize) -> Result<(), AHashSet<(u32, u32)>> 
     {
         let mut already_attempted_words = AHashSet::new();
+        let slot_crossing_ids = self.get_slot_mut(slot_id).unwrap().get_crossings();
 
         'selections: loop 
         {
-            let slot_crossing_ids = self.get_slot(slot_id).unwrap().get_crossings();
-            let nominated_word = match self.get_slot(slot_id).unwrap().nominate_word(&already_attempted_words, rng) 
+            let nominated_word = match self.get_slot_mut(slot_id).unwrap().nominate_word(&already_attempted_words, rng) 
             {
                 Ok(word) => word,
                 Err(_) => return Err(slot_crossing_ids)
@@ -336,7 +328,8 @@ impl ScandiGrid {
                 continue 'selections;
             }
 
-            self.get_slot(slot_id).unwrap().place_nominated_word_and_associated_clue(nominated_word.clone());
+            self.get_slot_mut(slot_id).unwrap().place_nominated_word_and_associated_clue(nominated_word.clone(), placement_order.clone());
+            *placement_order += 1;
 
             return Ok(());
         };
@@ -344,6 +337,8 @@ impl ScandiGrid {
 
     fn fill_grid(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
     {
+        let mut placement_order : usize = 0;
+
         while self.word_slots.iter().filter(|slot| !slot.has_placed_word()).peekable().peek().is_some()
         {
             // pick the slot with feweste candidates left
@@ -353,7 +348,7 @@ impl ScandiGrid {
                                               .map(|slot| slot.get_slot_id())
                                               .unwrap();
 
-            if let Err(crossings) = self.fill_slot(curr_slot_id, rng) 
+            if let Err(crossings) = self.fill_slot(curr_slot_id, rng, &mut placement_order) 
             {
                 if crossings.is_empty() 
                 {
@@ -361,18 +356,17 @@ impl ScandiGrid {
                 }
 
                 let crossing_ids : AHashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
-                let mut candidates: Vec<u32> = crossing_ids.iter()
-                                                           .filter(|id| {
-                                                               let slot = self.get_slot(**id);
-                                                               slot.unwrap().has_placed_word()
-                                                           })
-                                                           .copied()
-                                                           .collect();
-                candidates.sort();
+                let candidates: Vec<u32> = crossing_ids.iter()
+                                                       .filter(|id| {
+                                                           let slot = self.get_slot_mut(**id);
+                                                           slot.unwrap().has_placed_word()
+                                                       })
+                                                       .copied()
+                                                       .collect();
 
-                // this will panic if candidates is empty but we assume that is not possible 
-                let idx = rng.random_range(0..candidates.len());
-                let crossing_id = candidates[idx];
+                let crossing_id = candidates.into_iter()
+                                            .max_by_key(|id| self.get_slot_mut(*id).unwrap().get_placement_order())
+                                            .unwrap();
 
                 // Snapshot which slots currently hold a placed word BEFORE deallocating,
                 // so deallocation can tell which shared cells are still owned by an active crossing.
@@ -381,7 +375,7 @@ impl ScandiGrid {
                     .map(|s| s.get_slot_id())
                     .collect();
 
-                let mut crossing_slot = self.get_slot(crossing_id);
+                let mut crossing_slot = self.get_slot_mut(crossing_id);
                 crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
                     |id| placed_word_slot_ids.contains(&id)
                 );
