@@ -329,6 +329,7 @@ impl ScandiGrid {
             }
 
             self.get_slot_mut(slot_id).unwrap().place_nominated_word_and_associated_clue(nominated_word.clone(), placement_order.clone());
+            self.invalidate_slot_and_crossings(slot_id);
             *placement_order += 1;
 
             return Ok(());
@@ -341,12 +342,20 @@ impl ScandiGrid {
 
         while self.word_slots.iter().filter(|slot| !slot.has_placed_word()).peekable().peek().is_some()
         {
+            let unplaced_ids: Vec<u32> = self.word_slots.iter()
+                                                        .filter(|slot| !slot.has_placed_word())
+                                                        .map(|slot| slot.get_slot_id())
+                                                        .collect();
+
             // pick the slot with feweste candidates left
-            let curr_slot_id = self.word_slots.iter()
-                                              .filter(|slot| !slot.has_placed_word())
-                                              .min_by_key(|slot| { slot.get_current_candidate_count() })
-                                              .map(|slot| slot.get_slot_id())
-                                              .unwrap();
+            let curr_slot_id = unplaced_ids.into_iter()
+                                            .map(|id| {
+                                                let count = self.get_slot_mut(id).unwrap().get_current_candidate_count();
+                                                (id, count)
+                                            })
+                                            .min_by_key(|&(_, count)| count)
+                                            .map(|(id, _)| id)
+                                            .unwrap();
 
             if let Err(crossings) = self.fill_slot(curr_slot_id, rng, &mut placement_order) 
             {
@@ -379,10 +388,25 @@ impl ScandiGrid {
                 crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
                     |id| placed_word_slot_ids.contains(&id)
                 );
+                self.invalidate_slot_and_crossings(crossing_id);
             }
         }
 
         Ok(())
+    }
+
+    fn invalidate_slot_and_crossings(&mut self, slot_id: u32) 
+    {
+        let crossings = self.get_slot_mut(slot_id).unwrap().get_crossings();
+        self.get_slot_mut(slot_id).unwrap().invalidate_candidate_count_cache();
+
+        for (_, crossing_id) in crossings 
+        {
+            if let Some(crossing_slot) = self.get_slot_mut(crossing_id) 
+            {
+                crossing_slot.invalidate_candidate_count_cache();
+            }
+        }
     }
 
     fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut dyn Rng) -> AHashSet<PossibleCellState> 

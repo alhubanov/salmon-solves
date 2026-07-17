@@ -33,6 +33,7 @@ pub struct Slot {
     dictionary: Rc<RefCell<Dictionary>>,
     available_discarded_candidates: Vec<String>,
     placement_order: Option<usize>,
+    cached_candidate_count: Option<usize>
 }
 
 impl Slot {
@@ -48,6 +49,7 @@ impl Slot {
         let selected_word = None;
         let available_discarded_candidates = Vec::new();
         let placement_order = None;
+        let cached_candidate_count = None;
 
         Self 
         { 
@@ -57,7 +59,8 @@ impl Slot {
             selected_word, 
             dictionary, 
             available_discarded_candidates,
-            placement_order
+            placement_order,
+            cached_candidate_count
         }
     }
 
@@ -128,41 +131,35 @@ impl Slot {
         return pattern;
     }
 
-    pub fn get_current_candidate_count(&self) -> usize
+    // pub fn get_current_candidate_count(&self) -> usize
+    // {
+    //     let word_len = self.slot_cells.len();
+    //     let pattern = self.get_current_pattern();
+
+    //     let borrowed_dictionary = self.dictionary.borrow_mut();
+    //     let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
+
+    //     suitable_candidates.len()
+    // }
+
+    pub fn get_current_candidate_count(&mut self) -> usize 
     {
+        if let Some(count) = self.cached_candidate_count 
+        {
+            return count;
+        }
+
         let word_len = self.slot_cells.len();
         let pattern = self.get_current_pattern();
+        let count = self.dictionary.borrow().get_candidate_count(word_len, &pattern);
 
-        let borrowed_dictionary = self.dictionary.borrow_mut();
-        let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
-
-        suitable_candidates.len()
+        self.cached_candidate_count = Some(count);
+        count
     }
 
-    pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
-    {   
-        let word_len = self.slot_cells.len();
-        let pattern = self.get_current_pattern();
-
-        let borrowed_dictionary = self.dictionary.borrow_mut();
-        let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
-
-        let mut filtered_suitable_candidates: Vec<&SlotCandidate> = suitable_candidates
-            .into_iter()
-            .filter(|candidate| 
-                        candidate.get_assigned_slot_id() == None &&
-                        // candidate.get_conflicts().iter().map(|conflict| conflict.get_restricted_slot_id()).all(|restricted_id| restricted_id != self.slot_id) &&  
-                        !self.available_discarded_candidates.contains(candidate.get_word()) && 
-                        !already_attempted_words.contains(candidate.get_word()))
-            .collect();
-
-        if filtered_suitable_candidates.is_empty() { return Err(LayoutError::NoPossibleDomain); }
-        
-        filtered_suitable_candidates.sort();
-        let idx = rng.random_range(0..filtered_suitable_candidates.len());
-        let sampled_word = filtered_suitable_candidates[idx].get_word().clone();
-
-        return Ok(sampled_word);
+    pub fn invalidate_candidate_count_cache(&mut self) 
+    {
+        self.cached_candidate_count = None;
     }
 
     fn get_prospective_pattern(&self, slot_id: u32, letter: char) -> Vec<Option<char>> 
@@ -208,6 +205,32 @@ impl Slot {
         }
 
         candidates
+    }
+
+    pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
+    {   
+        let word_len = self.slot_cells.len();
+        let pattern = self.get_current_pattern();
+
+        let borrowed_dictionary = self.dictionary.borrow_mut();
+        let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
+
+        let mut filtered_suitable_candidates: Vec<&SlotCandidate> = suitable_candidates
+            .into_iter()
+            .filter(|candidate| 
+                        candidate.get_assigned_slot_id() == None &&
+                        // candidate.get_conflicts().iter().map(|conflict| conflict.get_restricted_slot_id()).all(|restricted_id| restricted_id != self.slot_id) &&  
+                        !self.available_discarded_candidates.contains(candidate.get_word()) && 
+                        !already_attempted_words.contains(candidate.get_word()))
+            .collect();
+
+        if filtered_suitable_candidates.is_empty() { return Err(LayoutError::NoPossibleDomain); }
+        
+        filtered_suitable_candidates.sort();
+        let idx = rng.random_range(0..filtered_suitable_candidates.len());
+        let sampled_word = filtered_suitable_candidates[idx].get_word().clone();
+
+        return Ok(sampled_word);
     }
 
     pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String, placement_order: usize) -> () 

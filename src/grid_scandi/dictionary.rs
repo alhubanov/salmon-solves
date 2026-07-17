@@ -111,6 +111,15 @@ impl Dictionary
         bitset.ones().map(|id| &letter_idx.words[id]).collect()
     }
 
+    pub fn get_candidate_count(&self, length: usize, pattern: &Vec<Option<char>>) -> usize 
+    {
+        match self.words_per_length.get(&length) 
+        {
+            Some(letter_idx) => letter_idx.query(pattern).count_ones(..),
+            None => 0
+        }
+    }
+
     pub fn get_words_for_length_mut(&mut self, length: usize) -> &mut Vec<SlotCandidate>
     {
         self.words_per_length.get_mut(&length).unwrap().get_words_mut()
