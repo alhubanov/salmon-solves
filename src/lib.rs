@@ -34,13 +34,19 @@ pub fn run() -> () {
 pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, rng: &mut dyn Rng) -> T 
 {
 
+    let max_depth = 
+        if width < 9 || height < 9 { 1 } 
+        else if width <= 14 && height <= 14 { 2 }
+        else if width <= 20 && height <= 20 { 3 }
+        else { 5 };
+    
     let mut grid = T::initialize(width, height);
 
     // Should the rng be different for each attempt?
     for _ in 0..10 
     {
         grid = T::initialize(width, height);
-        if let Ok(_) = grid.construct(rng) {
+        if let Ok(_) = grid.construct(rng, max_depth) {
             break;
         }
     }
@@ -54,12 +60,18 @@ pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Resul
 {
     let settings: ui_input_utilities::UserSettings = serde_wasm_bindgen::from_value(settings)?;
 
+    let max_depth = 
+        if width < 9 || height < 9 { 1 } 
+        else if width <= 14 && height <= 14 { 2 }
+        else if width <= 20 && height <= 20 { 3 }
+        else { 5 };
+
     let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
     for _ in 0..10 
     {
         // Should the rng be the same for all attempts?
         let mut rng = rand::rng();
-        if let Ok(_) = grid.construct(&mut rng) {
+        if let Ok(_) = grid.construct(&mut rng, max_depth) {
             break;
         }
     }

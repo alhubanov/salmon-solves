@@ -49,7 +49,7 @@ fn grid_is_valid()
 {
     let mut rng = rand::rng();
     let mut grid = ScandiGrid::initialize(6, 6);
-    grid.construct(&mut rng).ok();
+    grid.construct(&mut rng, 3).ok();
 
     let words_vec : Vec<&str> = WORDS.lines().collect();
     for slot in grid.word_slots 

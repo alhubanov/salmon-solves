@@ -69,12 +69,12 @@ impl Grid for ScandiGrid {
         Self { width, height, layout, clues_placed, num_cells_accessed, word_slots }
     }
 
-    fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
+    fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError> 
     {
         let dictionary = Rc::new(RefCell::new(Dictionary::build(WORDS)));
 
         self.create_all_slots(&dictionary, rng);
-        self.fill_grid(rng)?;
+        self.fill_grid(rng, max_depth)?;
 
         Ok(())
     } 
@@ -307,7 +307,7 @@ impl ScandiGrid {
         true
     }
 
-    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng, placement_order: &mut usize) -> Result<(), AHashSet<(u32, u32)>> 
+    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng, placement_order: &mut usize, max_depth: u32) -> Result<(), AHashSet<(u32, u32)>> 
     {
         let mut already_attempted_words = AHashSet::new();
         let slot_crossing_ids = self.get_slot_mut(slot_id).unwrap().get_crossings();
@@ -322,7 +322,7 @@ impl ScandiGrid {
 
             let mut domain = AHashSet::new();
             domain.insert(nominated_word.clone());
-            if !self.propagate_changes_across_crossing_slots(slot_id, domain, 3)
+            if !self.propagate_changes_across_crossing_slots(slot_id, domain, max_depth)
             {
                 already_attempted_words.insert(nominated_word.clone());
                 continue 'selections;
@@ -336,7 +336,7 @@ impl ScandiGrid {
         };
     }
 
-    fn fill_grid(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> 
+    fn fill_grid(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError> 
     {
         let mut placement_order : usize = 0;
 
@@ -357,7 +357,7 @@ impl ScandiGrid {
                                             .map(|(id, _)| id)
                                             .unwrap();
 
-            if let Err(crossings) = self.fill_slot(curr_slot_id, rng, &mut placement_order) 
+            if let Err(crossings) = self.fill_slot(curr_slot_id, rng, &mut placement_order, max_depth) 
             {
                 if crossings.is_empty() 
                 {

@@ -59,7 +59,7 @@ impl Grid for SimpleGrid {
         Self { width, height, layout, placed_words }
     }
 
-    fn construct(&mut self, rng: &mut dyn Rng) -> Result<(), LayoutError> {
+    fn construct(&mut self, rng: &mut dyn Rng, _max_depth: u32) -> Result<(), LayoutError> {
         let mut words_vec : Vec<&str> = WORDS.lines().collect();
         words_vec.shuffle(rng);
 
