@@ -43,8 +43,9 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, 
     let mut grid = T::initialize(width, height);
 
     // Should the rng be different for each attempt?
-    for _ in 0..10 
+    for idx in 0..10 
     {
+        println!("Attempt {}...", idx + 1);
         grid = T::initialize(width, height);
         if let Ok(_) = grid.construct(rng, max_depth) {
             break;

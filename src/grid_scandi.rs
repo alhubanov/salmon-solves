@@ -339,6 +339,8 @@ impl ScandiGrid {
     fn fill_grid(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError> 
     {
         let mut placement_order : usize = 0;
+        const MAX_BACKTRACKS_BEFORE_RESTART: u32 = 100;
+        let mut backtracking_count = 0;
 
         while self.word_slots.iter().filter(|slot| !slot.has_placed_word()).peekable().peek().is_some()
         {
@@ -359,6 +361,14 @@ impl ScandiGrid {
 
             if let Err(crossings) = self.fill_slot(curr_slot_id, rng, &mut placement_order, max_depth) 
             {
+                backtracking_count += 1;
+
+                if backtracking_count > MAX_BACKTRACKS_BEFORE_RESTART 
+                {
+                    println!("Exceeded backtracking threshold...");
+                    return Err(LayoutError::ExceededBacktrackingThreshold);
+                }
+
                 if crossings.is_empty() 
                 {
                     return Err(LayoutError::NoPossibleDomainAfterRecursion);

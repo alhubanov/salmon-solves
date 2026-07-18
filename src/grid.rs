@@ -8,6 +8,7 @@ pub enum LayoutError {
     NoPossibleDomain,
     CannotPlaceWord,
     IsNotAValidSlot,
+    ExceededBacktrackingThreshold,
     // LowClueDensity,
     // HighClueDensity,
     // IsolatedLetter,
