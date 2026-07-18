@@ -1,5 +1,4 @@
 use rand::prelude::*;
-use ahash::AHashSet;
 
 use super::clue::Clue;
 use super::slot::SlotDirection;
@@ -20,49 +19,49 @@ pub enum PossibleCellState {
 #[derive(PartialEq, Eq, Debug)]
 pub struct GridCell {
     pub cell: Option<CellType>,
-    pub slot_ids: Option<AHashSet<u32>>,
-    pub assigned_cell_states: AHashSet<PossibleCellState>,
-    pub possible_remaining_cell_states: AHashSet<PossibleCellState>
+    pub slot_ids: Option<Vec<u32>>,
+    pub assigned_cell_states: Vec<PossibleCellState>,
+    pub possible_remaining_cell_states: Vec<PossibleCellState>
 }
 
 impl GridCell {
 
     pub fn build(row_idx: u32, col_idx: u32, width: u32, height: u32) -> Self {
-        let mut cell_states = AHashSet::new();
+        let mut cell_states = Vec::new();
 
         if row_idx == 0 && col_idx == 0 {
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
+            cell_states.push(PossibleCellState::Clue(SlotDirection::DownOnRightSide)); 
+            cell_states.push(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
         } else if row_idx == 0 {
-            cell_states.insert(PossibleCellState::Letter);
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
+            cell_states.push(PossibleCellState::Letter);
+            cell_states.push(PossibleCellState::Clue(SlotDirection::Down));
 
             if col_idx < width - 1 {
-                cell_states.insert(PossibleCellState::Clue(SlotDirection::DownOnRightSide));
+                cell_states.push(PossibleCellState::Clue(SlotDirection::DownOnRightSide));
             } 
         } else if col_idx == 0 {
-            cell_states.insert(PossibleCellState::Letter);
-            cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
+            cell_states.push(PossibleCellState::Letter);
+            cell_states.push(PossibleCellState::Clue(SlotDirection::Right));
 
             if row_idx < height - 1 {
-                cell_states.insert(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
+                cell_states.push(PossibleCellState::Clue(SlotDirection::RightOnBottomSide));
             }
         } else {
-            cell_states.insert(PossibleCellState::Letter);
+            cell_states.push(PossibleCellState::Letter);
 
             if row_idx < height - 2 {
-                cell_states.insert(PossibleCellState::Clue(SlotDirection::Down));
+                cell_states.push(PossibleCellState::Clue(SlotDirection::Down));
             }
 
             if col_idx < width - 2 {
-                cell_states.insert(PossibleCellState::Clue(SlotDirection::Right));
+                cell_states.push(PossibleCellState::Clue(SlotDirection::Right));
             }
         }
 
         Self { 
             cell: None,
             slot_ids: None,
-            assigned_cell_states: AHashSet::new(),
+            assigned_cell_states: Vec::new(),
             possible_remaining_cell_states: cell_states
         }
     }
@@ -109,15 +108,17 @@ impl GridCell {
     pub fn assign_clue_state(
         &mut self, 
         rng: &mut dyn Rng, 
-        previously_assigned_states: &AHashSet<PossibleCellState>, 
+        previously_assigned_states: &Vec<PossibleCellState>, 
         is_first_row: bool, 
         is_first_col: bool
     ) -> Option<PossibleCellState> 
     {
         // remove states that cannot be currently assigned
-        let letter_state_removed = self.possible_remaining_cell_states.remove(&PossibleCellState::Letter);
+        let letter_state_removed = self.possible_remaining_cell_states.contains(&PossibleCellState::Letter);
+
+        self.possible_remaining_cell_states.retain(|&state| state != PossibleCellState::Letter);
         for assigned_state in previously_assigned_states {
-            self.possible_remaining_cell_states.remove(&assigned_state);
+            self.possible_remaining_cell_states.retain(|state| state != assigned_state);
         }
 
         let is_top_left = is_first_row && is_first_col;
@@ -139,31 +140,31 @@ impl GridCell {
             return None;
         } 
 
-        self.assigned_cell_states.insert(sampled_state.unwrap());
+        self.assigned_cell_states.push(sampled_state.unwrap());
 
         // insert back all removed states
         if letter_state_removed {
-            self.possible_remaining_cell_states.insert(PossibleCellState::Letter);
+            self.possible_remaining_cell_states.push(PossibleCellState::Letter);
         }
 
         for assigned_state in previously_assigned_states {
-            self.possible_remaining_cell_states.insert(*assigned_state);
+            self.possible_remaining_cell_states.push(*assigned_state);
         }
 
         return Some(sampled_state.unwrap()); 
     }
 
     pub fn assign_letter_state(&mut self) -> () {
-        self.assigned_cell_states.insert(PossibleCellState::Letter);
+        self.assigned_cell_states.push(PossibleCellState::Letter);
     }
 
     pub fn force_letter(&mut self) -> () {
         self.possible_remaining_cell_states.clear();
-        self.possible_remaining_cell_states.insert(PossibleCellState::Letter);
+        self.possible_remaining_cell_states.push(PossibleCellState::Letter);
     }
 
     pub fn force_clue(&mut self) -> () {
-        self.possible_remaining_cell_states.remove(&PossibleCellState::Letter);
+        self.possible_remaining_cell_states.retain(|&state| state != PossibleCellState::Letter);
     }
 
     pub fn can_still_be_letter(&self) -> bool {
@@ -192,17 +193,17 @@ impl GridCell {
         return self.assigned_cell_states.contains(&PossibleCellState::Clue(clue_kind));
     }
 
-    pub fn insert_slot_id(&mut self, slot_id: Option<u32>) -> () {
+    pub fn add_slot_id(&mut self, slot_id: Option<u32>) -> () {
         if let None = slot_id {
             return;
         }
 
         match &mut self.slot_ids {
-            Some(set) => { set.insert(slot_id.unwrap()); },
+            Some(vector) => { vector.push(slot_id.unwrap()); },
             None => {
-                let mut new_set : AHashSet<u32> = AHashSet::new();
-                new_set.insert(slot_id.unwrap());
-                self.slot_ids = Some(new_set);
+                let mut new_vec : Vec<u32> = Vec::new();
+                new_vec.push(slot_id.unwrap());
+                self.slot_ids = Some(new_vec);
             }
         };
     }

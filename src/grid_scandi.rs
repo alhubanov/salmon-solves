@@ -175,7 +175,7 @@ impl ScandiGrid {
                 continue; 
             }
 
-            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().insert_slot_id(slot_id);
+            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().add_slot_id(slot_id);
             slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][horizontal_idx as usize]));  
 
             if idx < word_len - 1 {
@@ -307,7 +307,7 @@ impl ScandiGrid {
         true
     }
 
-    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng, placement_order: &mut usize, max_depth: u32) -> Result<(), AHashSet<(u32, u32)>> 
+    fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng, placement_order: &mut usize, max_depth: u32) -> Result<(), Vec<(u32, u32)>> 
     {
         let mut already_attempted_words = AHashSet::new();
         let slot_crossing_ids = self.get_slot_mut(slot_id).unwrap().get_crossings();
@@ -365,7 +365,8 @@ impl ScandiGrid {
 
                 if backtracking_count > MAX_BACKTRACKS_BEFORE_RESTART 
                 {
-                    println!("Exceeded backtracking threshold...");
+                    // println!("Backtracking count: {}", backtracking_count);
+                    // println!("Exceeded backtracking threshold...");
                     return Err(LayoutError::ExceededBacktrackingThreshold);
                 }
 
@@ -374,14 +375,10 @@ impl ScandiGrid {
                     return Err(LayoutError::NoPossibleDomainAfterRecursion);
                 }
 
-                let crossing_ids : AHashSet<u32> = crossings.iter().map(|(_, id)| *id).collect();
-                let candidates: Vec<u32> = crossing_ids.iter()
-                                                       .filter(|id| {
-                                                           let slot = self.get_slot_mut(**id);
-                                                           slot.unwrap().has_placed_word()
-                                                       })
-                                                       .copied()
-                                                       .collect();
+                let candidates: Vec<u32> = crossings.iter()
+                                                    .map(|(_, id)| *id)
+                                                    .filter(|id| self.get_slot_mut(*id).unwrap().has_placed_word())
+                                                    .collect();
 
                 let crossing_id = candidates.into_iter()
                                             .max_by_key(|id| self.get_slot_mut(*id).unwrap().get_placement_order())
@@ -390,9 +387,9 @@ impl ScandiGrid {
                 // Snapshot which slots currently hold a placed word BEFORE deallocating,
                 // so deallocation can tell which shared cells are still owned by an active crossing.
                 let placed_word_slot_ids: AHashSet<u32> = self.word_slots.iter()
-                    .filter(|s| s.has_placed_word() && s.get_slot_id() != crossing_id)
-                    .map(|s| s.get_slot_id())
-                    .collect();
+                                                                         .filter(|s| s.has_placed_word() && s.get_slot_id() != crossing_id)
+                                                                         .map(|s| s.get_slot_id())
+                                                                         .collect();
 
                 let mut crossing_slot = self.get_slot_mut(crossing_id);
                 crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
@@ -401,6 +398,8 @@ impl ScandiGrid {
                 self.invalidate_slot_and_crossings(crossing_id);
             }
         }
+
+        // println!("Backtracking count: {}", backtracking_count);
 
         Ok(())
     }
@@ -419,13 +418,13 @@ impl ScandiGrid {
         }
     }
 
-    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut dyn Rng) -> AHashSet<PossibleCellState> 
+    fn set_cell_state(&mut self, vertical_idx: u32, horizontal_idx: u32, rng: &mut dyn Rng) -> Vec<PossibleCellState> 
     {
         self.apply_first_row_column_restrictions(vertical_idx, horizontal_idx);
         let current_word_len : i32 = self.get_max_len(vertical_idx, horizontal_idx);
 
         let mut curr_cell = self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut();
-        let assigned_states : AHashSet<PossibleCellState> = AHashSet::new();
+        let assigned_states : Vec<PossibleCellState> = Vec::new();
 
         let is_first_row = vertical_idx == 0;
         let is_first_col = horizontal_idx == 0;
@@ -479,20 +478,20 @@ impl ScandiGrid {
         }
     }
 
-    fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: AHashSet<PossibleCellState>) -> AHashSet<PossibleCellState> 
+    fn assign_letter(curr_cell: &mut GridCell, mut assigned_states: Vec<PossibleCellState>) -> Vec<PossibleCellState> 
     {
         curr_cell.assign_letter_state();
-        assigned_states.insert(PossibleCellState::Letter);
+        assigned_states.push(PossibleCellState::Letter);
         return assigned_states;
     }
 
     fn assign_clue_states(
         curr_cell: &mut GridCell, 
         rng: &mut dyn Rng, 
-        mut assigned_states: AHashSet<PossibleCellState>, 
+        mut assigned_states: Vec<PossibleCellState>, 
         is_first_row: bool, 
         is_first_col: bool, 
-        randomize: bool) -> AHashSet<PossibleCellState> 
+        randomize: bool) -> Vec<PossibleCellState> 
     {
         let mut num_assigned_states = 0;
         let mut random_number: f32 = 0.0; // starts at 0.0 so at least one state is assigned
@@ -503,7 +502,7 @@ impl ScandiGrid {
             {
                 Some(state) => 
                 {
-                    assigned_states.insert(state);
+                    assigned_states.push(state);
                     num_assigned_states += 1;
                     random_number = if randomize { rng.random() } else { 0.0 };
                 }
@@ -530,7 +529,7 @@ impl ScandiGrid {
         }
     }
 
-    fn restrict_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &AHashSet<PossibleCellState>) -> Result<(), LayoutError> 
+    fn restrict_neighborhood(&mut self, vertical_idx: u32, horizontal_idx: u32, assigned_cell_states: &Vec<PossibleCellState>) -> Result<(), LayoutError> 
     {
         if assigned_cell_states.iter().all(|state| matches!(state, PossibleCellState::Clue(_))) {
 

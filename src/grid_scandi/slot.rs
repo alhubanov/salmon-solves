@@ -91,16 +91,16 @@ impl Slot {
         &self.slot_cells
     }
 
-    pub fn get_crossings(&self) -> AHashSet<(u32, u32)> 
+    pub fn get_crossings(&self) -> Vec<(u32, u32)> 
     {
 
-        let mut crossing_slot_ids : AHashSet<(u32, u32)> = AHashSet::new();
+        let mut crossing_slot_ids : Vec<(u32, u32)> = Vec::new();
         for (idx, cell) in self.slot_cells.iter().enumerate() 
         {
             let cell_foreign_crossing_id : Option<u32> = cell.borrow().slot_ids.as_ref().unwrap().iter().find(|elem| *elem != &self.slot_id).copied();
             if cell_foreign_crossing_id.is_some() 
             {
-                crossing_slot_ids.insert((idx as u32, cell_foreign_crossing_id.unwrap()));
+                crossing_slot_ids.push((idx as u32, cell_foreign_crossing_id.unwrap()));
             }
         }
 

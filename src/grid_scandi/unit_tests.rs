@@ -2,9 +2,9 @@ use crate::grid_scandi::gridcell::CellType::Letter;
 use crate::grid_scandi::gridcell::CellType::Clue;
 
 use super::*;
+use chacha20::ChaCha8Rng;
 use rand;
 // use rand::rand_core::SeedableRng;
-// use chacha20::ChaCha8Rng;
 
 // #[test]
 // fn layout_first_row_and_column() {
@@ -22,34 +22,34 @@ use rand;
 //     test_helpers::assert_correct_first_col(&grid);
 // }
 
-// #[test]
-// fn construct_is_deterministic_if_rng_is_seeded() 
-// {
-//     let grid1 = 
-//     {
-//         let mut rng = ChaCha8Rng::seed_from_u64(2);
-//         let mut grid1 = ScandiGrid::initialize(5, 5);
-//         grid1.construct(&mut rng).ok();
-//         grid1.layout
-//     };
+#[test]
+fn construct_is_deterministic_if_rng_is_seeded() 
+{
+    let grid1 = 
+    {
+        let mut rng = ChaCha8Rng::seed_from_u64(14);
+        let mut grid1 = ScandiGrid::initialize(12, 12);
+        grid1.construct(&mut rng, 2).ok();
+        grid1.layout
+    };
 
-//     let grid2 = 
-//     {
-//         let mut rng = ChaCha8Rng::seed_from_u64(2);
-//         let mut grid2 = ScandiGrid::initialize(5, 5);
-//         grid2.construct(&mut rng).ok();
-//         grid2.layout
-//     };
+    let grid2 = 
+    {
+        let mut rng = ChaCha8Rng::seed_from_u64(14);
+        let mut grid2 = ScandiGrid::initialize(12, 12);
+        grid2.construct(&mut rng,2).ok();
+        grid2.layout
+    };
 
-//     assert_eq!(grid1, grid2);
-// }
+    assert_eq!(grid1, grid2);
+}
 
 #[test]
 fn grid_is_valid()
 {
     let mut rng = rand::rng();
-    let mut grid = ScandiGrid::initialize(6, 6);
-    grid.construct(&mut rng, 3).ok();
+    let mut grid = ScandiGrid::initialize(10, 10);
+    grid.construct(&mut rng, 2).ok();
 
     let words_vec : Vec<&str> = WORDS.lines().collect();
     for slot in grid.word_slots 
