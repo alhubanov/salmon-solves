@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use rand::{prelude::*};
 use rand::rand_core::Rng;
 
-use ahash::{AHashSet};
+use ahash::{AHashMap, AHashSet};
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -44,7 +44,8 @@ pub struct ScandiGrid {
     layout: Vec<Vec<Rc<RefCell<GridCell>>>>,
     clues_placed: u32,
     num_cells_accessed: u32,
-    word_slots: Vec<Slot>
+    word_slots: Vec<Slot>,
+    slot_id_pos_map: AHashMap<u32, u32>
 }
 
 impl Grid for ScandiGrid {
@@ -65,8 +66,9 @@ impl Grid for ScandiGrid {
         let num_cells_accessed = 0;
         let clues_placed = 0;
         let word_slots = Vec::new();
+        let slot_id_pos_map = AHashMap::new();
 
-        Self { width, height, layout, clues_placed, num_cells_accessed, word_slots }
+        Self { width, height, layout, clues_placed, num_cells_accessed, word_slots, slot_id_pos_map }
     }
 
     fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError> 
@@ -95,9 +97,9 @@ impl Grid for ScandiGrid {
 
 impl ScandiGrid {
 
-    fn get_slot_mut(&mut self, slot_id: u32) -> Option<&mut Slot> 
+    fn get_slot_mut(&mut self, slot_id: u32) -> &mut Slot 
     {
-        self.word_slots.iter_mut().find(|slot| slot.get_slot_id() == slot_id)
+        &mut self.word_slots[self.slot_id_pos_map[&slot_id] as usize]
     }
 
     fn get_len_and_associated_clue_coords(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, orientation: &str) -> Result<(i32, u32, u32), LayoutError> 
@@ -259,6 +261,11 @@ impl ScandiGrid {
 
         // self.word_slots.sort_by(|slot1, slot2| (*slot1.get_suitable_word_set()).len().cmp(&(*slot2.get_suitable_word_set()).len()));
         self.word_slots.sort_by_key(|slot| slot.get_crossings().len());
+
+        for (idx, slot) in self.word_slots.iter().enumerate()
+        {
+            self.slot_id_pos_map.insert(slot.get_slot_id(), idx as u32);
+        }
     }
 
     fn propagate_changes_across_crossing_slots(&mut self, slot_id: u32, domain: AHashSet<String>, max_depth: u32) -> bool 
@@ -268,7 +275,6 @@ impl ScandiGrid {
         visited.insert(slot_id);
 
         let mut propagation_queue : VecDeque<((u32, u32), u32, Rc<AHashSet<String>>, u32)> = self.get_slot_mut(slot_id)
-                                                                                                 .unwrap()
                                                                                                  .get_crossings()
                                                                                                  .into_iter()
                                                                                                  .map(|(a, b)| ((a, b), slot_id, Rc::clone(&domain), 1))
@@ -282,7 +288,7 @@ impl ScandiGrid {
                 continue;
             }
 
-            let curr_slot = self.get_slot_mut(slot_id_to_propagate_to).unwrap();
+            let curr_slot = self.get_slot_mut(slot_id_to_propagate_to);
             let remaining_word_candidates = Rc::new(curr_slot.get_remaining_word_candidates(origin_id, &restricting_domain, idx));
 
             if remaining_word_candidates.len() == 0
@@ -310,11 +316,11 @@ impl ScandiGrid {
     fn fill_slot(&mut self, slot_id: u32, rng: &mut dyn Rng, placement_order: &mut usize, max_depth: u32) -> Result<(), Vec<(u32, u32)>> 
     {
         let mut already_attempted_words = AHashSet::new();
-        let slot_crossing_ids = self.get_slot_mut(slot_id).unwrap().get_crossings();
+        let slot_crossing_ids = self.get_slot_mut(slot_id).get_crossings();
 
         'selections: loop 
         {
-            let nominated_word = match self.get_slot_mut(slot_id).unwrap().nominate_word(&already_attempted_words, rng) 
+            let nominated_word = match self.get_slot_mut(slot_id).nominate_word(&already_attempted_words, rng) 
             {
                 Ok(word) => word,
                 Err(_) => return Err(slot_crossing_ids)
@@ -328,7 +334,7 @@ impl ScandiGrid {
                 continue 'selections;
             }
 
-            self.get_slot_mut(slot_id).unwrap().place_nominated_word_and_associated_clue(nominated_word.clone(), placement_order.clone());
+            self.get_slot_mut(slot_id).place_nominated_word_and_associated_clue(nominated_word.clone(), placement_order.clone());
             self.invalidate_slot_and_crossings(slot_id);
             *placement_order += 1;
 
@@ -352,7 +358,7 @@ impl ScandiGrid {
             // pick the slot with feweste candidates left
             let curr_slot_id = unplaced_ids.into_iter()
                                             .map(|id| {
-                                                let count = self.get_slot_mut(id).unwrap().get_current_candidate_count();
+                                                let count = self.get_slot_mut(id).get_current_candidate_count();
                                                 (id, count)
                                             })
                                             .min_by_key(|&(_, count)| count)
@@ -377,11 +383,11 @@ impl ScandiGrid {
 
                 let candidates: Vec<u32> = crossings.iter()
                                                     .map(|(_, id)| *id)
-                                                    .filter(|id| self.get_slot_mut(*id).unwrap().has_placed_word())
+                                                    .filter(|id| self.get_slot_mut(*id).has_placed_word())
                                                     .collect();
 
                 let crossing_id = candidates.into_iter()
-                                            .max_by_key(|id| self.get_slot_mut(*id).unwrap().get_placement_order())
+                                            .max_by_key(|id| self.get_slot_mut(*id).get_placement_order())
                                             .unwrap();
 
                 // Snapshot which slots currently hold a placed word BEFORE deallocating,
@@ -391,8 +397,8 @@ impl ScandiGrid {
                                                                          .map(|s| s.get_slot_id())
                                                                          .collect();
 
-                let mut crossing_slot = self.get_slot_mut(crossing_id);
-                crossing_slot.as_mut().unwrap().deallocate_and_discard_word(
+                let crossing_slot = self.get_slot_mut(crossing_id);
+                crossing_slot.deallocate_and_discard_word(
                     |id| placed_word_slot_ids.contains(&id)
                 );
                 self.invalidate_slot_and_crossings(crossing_id);
@@ -406,15 +412,12 @@ impl ScandiGrid {
 
     fn invalidate_slot_and_crossings(&mut self, slot_id: u32) 
     {
-        let crossings = self.get_slot_mut(slot_id).unwrap().get_crossings();
-        self.get_slot_mut(slot_id).unwrap().invalidate_candidate_count_cache();
+        let crossings = self.get_slot_mut(slot_id).get_crossings();
+        self.get_slot_mut(slot_id).invalidate_candidate_count_cache();
 
-        for (_, crossing_id) in crossings 
+        for (_, crossing_id) in crossings
         {
-            if let Some(crossing_slot) = self.get_slot_mut(crossing_id) 
-            {
-                crossing_slot.invalidate_candidate_count_cache();
-            }
+            self.get_slot_mut(crossing_id).invalidate_candidate_count_cache();
         }
     }
 
