@@ -13,6 +13,7 @@ mod gridcell;
 use gridcell::{GridCell, CellState, CrossingState};
 use crate::grid::Grid;
 use crate::grid::LayoutError;
+use crate::grid_scandi::run_stats::RunStats;
 
 static WORDS: &str = include_str!("../word_files/common_english_words_long.txt");
 
@@ -59,7 +60,7 @@ impl Grid for SimpleGrid {
         Self { width, height, layout, placed_words }
     }
 
-    fn construct(&mut self, rng: &mut dyn Rng, _max_depth: u32) -> Result<(), LayoutError> {
+    fn construct(&mut self, rng: &mut dyn Rng, _max_depth: u32, _run_stats: &mut RunStats) -> Result<(), LayoutError> {
         let mut words_vec : Vec<&str> = WORDS.lines().collect();
         words_vec.shuffle(rng);
 

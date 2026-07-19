@@ -19,6 +19,7 @@ mod gridcell;
 mod slot;
 mod slot_candidate;
 mod dictionary;
+pub mod run_stats;
 
 use slot::Slot;
 use slot::SlotDirection;
@@ -26,6 +27,7 @@ use gridcell::{GridCell, PossibleCellState};
 use dictionary::Dictionary;
 use crate::grid::LayoutError;
 use crate::grid::Grid;
+use crate::grid_scandi::run_stats::RunStats;
 
 mod constants {
     pub const TARGET_CLUE_DENSITY : f32                        = 0.25;
@@ -71,12 +73,12 @@ impl Grid for ScandiGrid {
         Self { width, height, layout, clues_placed, num_cells_accessed, word_slots, slot_id_pos_map }
     }
 
-    fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError> 
+    fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32, run_stats: &mut RunStats) -> Result<(), LayoutError> 
     {
         let dictionary = Rc::new(RefCell::new(Dictionary::build(WORDS)));
 
         self.create_all_slots(&dictionary, rng);
-        self.fill_grid(rng, max_depth)?;
+        self.fill_grid(rng, max_depth, run_stats)?;
 
         Ok(())
     } 
@@ -342,7 +344,7 @@ impl ScandiGrid {
         };
     }
 
-    fn fill_grid(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError> 
+    fn fill_grid(&mut self, rng: &mut dyn Rng, max_depth: u32, run_stats: &mut RunStats) -> Result<(), LayoutError> 
     {
         let mut placement_order : usize = 0;
         const MAX_BACKTRACKS_BEFORE_RESTART: u32 = 100;
@@ -368,11 +370,14 @@ impl ScandiGrid {
             if let Err(crossings) = self.fill_slot(curr_slot_id, rng, &mut placement_order, max_depth) 
             {
                 backtracking_count += 1;
+                run_stats.increment_total_backtracks();
 
                 if backtracking_count > MAX_BACKTRACKS_BEFORE_RESTART 
                 {
                     // println!("Backtracking count: {}", backtracking_count);
                     // println!("Exceeded backtracking threshold...");
+
+                    run_stats.record_backtracking_count_for_attempt(backtracking_count);
                     return Err(LayoutError::ExceededBacktrackingThreshold);
                 }
 
@@ -406,6 +411,7 @@ impl ScandiGrid {
         }
 
         // println!("Backtracking count: {}", backtracking_count);
+        run_stats.record_backtracking_count_for_attempt(backtracking_count);
 
         Ok(())
     }

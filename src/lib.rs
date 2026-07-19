@@ -5,6 +5,7 @@ use crate::grid::Crossword;
 use crate::grid_scandi::ScandiGrid;
 use crate::grid::Grid;
 use crate::grid::GenericGrid;
+use crate::grid_scandi::run_stats::RunStats;
 
 mod grid;
 mod grid_simple;
@@ -41,16 +42,21 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, 
         else { 4 };
     
     let mut grid = T::initialize(width, height);
+    let mut run_stats = RunStats::new();
 
     // Should the rng be different for each attempt?
     for _ in 0..10 
     {
         // println!("Attempt {}...", idx + 1);
         grid = T::initialize(width, height);
-        if let Ok(_) = grid.construct(rng, max_depth) {
+        if let Ok(_) = grid.construct(rng, max_depth, &mut run_stats) {
             break;
         }
+
+        run_stats.increment_total_restarts();
     }
+
+    run_stats.print();
 
     grid
 }
@@ -68,11 +74,14 @@ pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Resul
         else { 5 };
 
     let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
+    let mut run_stats = RunStats::new();
+    
     for _ in 0..10 
     {
         // Should the rng be the same for all attempts?
         let mut rng = rand::rng();
-        if let Ok(_) = grid.construct(&mut rng, max_depth) {
+        if let Ok(_) = grid.construct(&mut rng, max_depth, &mut run_stats) 
+        {
             break;
         }
     }

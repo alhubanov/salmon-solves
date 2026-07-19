@@ -25,19 +25,21 @@ use rand;
 #[test]
 fn construct_is_deterministic_if_rng_is_seeded() 
 {
+    let mut run_stats = RunStats::new();
     let grid1 = 
     {
         let mut rng = ChaCha8Rng::seed_from_u64(14);
         let mut grid1 = ScandiGrid::initialize(12, 12);
-        grid1.construct(&mut rng, 2).ok();
+        grid1.construct(&mut rng, 2, &mut run_stats).ok();
         grid1.layout
     };
 
+    let mut run_stats = RunStats::new();
     let grid2 = 
     {
         let mut rng = ChaCha8Rng::seed_from_u64(14);
         let mut grid2 = ScandiGrid::initialize(12, 12);
-        grid2.construct(&mut rng,2).ok();
+        grid2.construct(&mut rng,2, &mut run_stats).ok();
         grid2.layout
     };
 
@@ -49,7 +51,9 @@ fn grid_is_valid()
 {
     let mut rng = rand::rng();
     let mut grid = ScandiGrid::initialize(10, 10);
-    grid.construct(&mut rng, 2).ok();
+    let mut run_stats = RunStats::new();
+
+    grid.construct(&mut rng, 2, &mut run_stats).ok();
 
     let words_vec : Vec<&str> = WORDS.lines().collect();
     for slot in grid.word_slots 

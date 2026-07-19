@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use rand::{prelude::*};
 
-use crate::{grid_scandi::ScandiGrid, grid_simple::SimpleGrid, ui_input_utilities::GridType};
+use crate::{grid_scandi::{ScandiGrid, run_stats::RunStats}, grid_simple::SimpleGrid, ui_input_utilities::GridType};
 
 pub enum LayoutError {
     NoPossibleDomainAfterRecursion,
@@ -17,7 +17,7 @@ pub enum LayoutError {
 
 pub trait Grid {
     fn initialize(width: u32, height: u32) -> Self;
-    fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError>;
+    fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32, run_stats: &mut RunStats) -> Result<(), LayoutError>;
     fn print(&self) -> ();
 }
 
@@ -40,10 +40,10 @@ impl Grid for GenericGrid  {
         panic!("Use GenericGrid::initialize(grid_type, width, height) instead.")
     }
 
-    fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32) -> Result<(), LayoutError> {
+    fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32, run_stats: &mut RunStats) -> Result<(), LayoutError> {
         match self {
-            Self::Scandi(scandi_grid) => scandi_grid.construct(rng, max_depth),
-            Self::Simple(simple_grid) => simple_grid.construct(rng, max_depth)
+            Self::Scandi(scandi_grid) => scandi_grid.construct(rng, max_depth, run_stats),
+            Self::Simple(simple_grid) => simple_grid.construct(rng, max_depth, run_stats)
         }
     }
 
