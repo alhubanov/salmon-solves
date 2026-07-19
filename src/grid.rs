@@ -3,6 +3,7 @@ use rand::{prelude::*};
 
 use crate::{grid_scandi::{ScandiGrid, run_stats::RunStats}, grid_simple::SimpleGrid, ui_input_utilities::GridType};
 
+#[derive(Debug)]
 pub enum LayoutError {
     NoPossibleDomainAfterRecursion,
     NoPossibleDomain,
