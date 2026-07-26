@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { build_crossword_grid } from "../../../pkg/crossy";
 
 // Parse "15x15" → { cols: 15, rows: 15 }
-function parseGrid(gridStr) {
+function parseGrid(gridStr) 
+{
   const match = gridStr.match(/(\d+)x(\d+)/);
   if (!match) return { cols: 15, rows: 15 };
   return { cols: parseInt(match[1]), rows: parseInt(match[2]) };
@@ -14,6 +15,28 @@ export default function CrosswordGrid({ settings, generated })
   const [cells, setCells] = useState([]);
   const [userInput, setUserInput] = useState({});
   const gridType = settings.type;
+
+  const containerRef = useRef(null);
+  const [containerSize, setContainerSize] = useState({ width: 800, height: 800 });
+
+  useEffect(() => 
+  {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      setContainerSize({ width, height });
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const MAX_CELL_SIZE = 80;
+  const MIN_CELL_SIZE = 20;
+  const rawCellSize = Math.min(containerSize.width / cols, containerSize.height / rows);
+  const cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, rawCellSize));
 
   useEffect(() => 
   {
@@ -71,17 +94,20 @@ export default function CrosswordGrid({ settings, generated })
     <div className="grid-wrapper">
       <div
         className="crossword-grid"
-        style={{ gridTemplateColumns: `repeat(${cols}, 34px)` }}
+        style={{
+          gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+          gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
+        }}
       >
         {cells.map((cell, idx) => {
           const normalizedCell = normalizeCell(cell, gridType);
 
           if (normalizedCell.kind === "black") {
-            return <div key={idx} className="grid-cell black" />;
+            return <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize }} />;
           }
 
           return (
-            <div key={idx} className="grid-cell white">
+            <div key={idx} className="grid-cell white" style={{ width: cellSize, height: cellSize }} >
               <input
                 maxLength={1}
                 value={userInput[idx] ?? normalizedCell.value ?? ""}
