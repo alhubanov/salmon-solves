@@ -19,15 +19,13 @@ pub enum Difficulty {
 
 #[derive(Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq, Hash)]
 #[wasm_bindgen]
-pub enum Theme {
+pub enum Theme 
+{
+    // TODO: fix themes matching with frontend
     ArtsAndCulture,
     NatureAndScience,
     SportsAndGames,
-    FoodAndDrink,
     HistoryAndSociety,
-    Technology,
-    Seasonal,
-    Wordplay,
     Random
 }
 

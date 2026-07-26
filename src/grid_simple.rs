@@ -1,6 +1,8 @@
 use num::Integer;
 use rand::{self, seq::SliceRandom};
 use rand::rand_core::Rng;
+use serde::Serialize;
+use wasm_bindgen::prelude::*;
 
 use ahash::AHashSet;
 
@@ -85,6 +87,13 @@ impl Grid for SimpleGrid {
 
             println!()
         }
+    }
+
+    fn layout(&self) -> Result<JsValue, JsValue> {
+        let serializer = serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true).serialize_missing_as_null(true);
+        self.layout
+            .serialize(&serializer)
+            .map_err(|e| e.to_string().into())
     }
 }
 

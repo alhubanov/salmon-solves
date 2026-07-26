@@ -62,6 +62,7 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, 
 }
 
 // Access point if using frontend
+// run "wasm-pack build --target web" to compile to wasm
 #[wasm_bindgen]
 pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Result<Crossword, JsValue> 
 {
@@ -73,17 +74,20 @@ pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Resul
         else if width <= 20 && height <= 20 { 3 }
         else { 5 };
 
+    let mut rng = rand::rng();
     let mut grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
     let mut run_stats = RunStats::new();
     
+    // Should the rng be the same for all attempts?
     for _ in 0..10 
     {
-        // Should the rng be the same for all attempts?
-        let mut rng = rand::rng();
+        grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
         if let Ok(_) = grid.construct(&mut rng, max_depth, &mut run_stats) 
         {
             break;
         }
+
+        run_stats.increment_total_restarts();
     }
 
     return Ok(Crossword::new(grid));

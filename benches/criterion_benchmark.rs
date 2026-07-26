@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 use criterion::{criterion_group, criterion_main, Criterion, black_box, BenchmarkId};
 use crossy::{build_crossword_grid_for_command_line, grid_scandi::ScandiGrid};
 use rand;

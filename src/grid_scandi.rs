@@ -2,6 +2,8 @@ use std::cmp::max;
 use std::collections::VecDeque;
 use rand::{prelude::*};
 use rand::rand_core::Rng;
+use wasm_bindgen::prelude::*;
+use serde::Serialize;
 
 use ahash::{AHashMap, AHashSet};
 
@@ -15,7 +17,7 @@ mod test_helpers;
 
 mod clue;
 mod letter;
-mod gridcell;
+pub mod gridcell;
 mod slot;
 mod slot_candidate;
 mod dictionary;
@@ -94,6 +96,13 @@ impl Grid for ScandiGrid {
 
             println!()
         }
+    }
+
+    fn layout(&self) -> Result<JsValue, JsValue> {
+        let serializer = serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true).serialize_missing_as_null(true);
+        self.layout
+            .serialize(&serializer)
+            .map_err(|e| e.to_string().into())
     }
 }
 

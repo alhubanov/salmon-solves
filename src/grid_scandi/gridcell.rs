@@ -1,22 +1,23 @@
 use rand::prelude::*;
+use serde::Serialize;
 
 use super::clue::Clue;
 use super::slot::SlotDirection;
 use super::letter::Letter;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize)]
 pub enum CellType {
     Clue(Clue),
     Letter(Letter)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash, Serialize)]
 pub enum PossibleCellState {
     Letter,
     Clue(SlotDirection)
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Serialize)]
 pub struct GridCell {
     pub cell: Option<CellType>,
     pub slot_ids: Option<Vec<u32>>,

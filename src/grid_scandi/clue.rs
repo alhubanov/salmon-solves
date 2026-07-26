@@ -1,4 +1,6 @@
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+use serde::Serialize;
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize)]
 pub struct Clue {
     hint: String
 }

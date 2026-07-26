@@ -1,6 +1,5 @@
 use wasm_bindgen::prelude::*;
 use rand::{prelude::*};
-
 use crate::{grid_scandi::{ScandiGrid, run_stats::RunStats}, grid_simple::SimpleGrid, ui_input_utilities::GridType};
 
 #[derive(Debug)]
@@ -20,6 +19,7 @@ pub trait Grid {
     fn initialize(width: u32, height: u32) -> Self;
     fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32, run_stats: &mut RunStats) -> Result<(), LayoutError>;
     fn print(&self) -> ();
+    fn layout(&self) -> Result<JsValue, JsValue>;
 }
 
 pub enum GenericGrid {
@@ -54,6 +54,13 @@ impl Grid for GenericGrid  {
             Self::Simple(simple_grid) => simple_grid.print()
         }
     }
+
+    fn layout(&self) -> Result<JsValue, JsValue> {
+        match self {
+            Self::Scandi(g) => g.layout(),
+            Self::Simple(g) => g.layout(),
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -64,5 +71,13 @@ pub struct Crossword {
 impl Crossword {
     pub fn new(_constructed_grid: GenericGrid) -> Self {
         Self { _constructed_grid }
+    }
+}
+
+#[wasm_bindgen]
+impl Crossword {
+    #[wasm_bindgen(getter)]
+    pub fn layout(&self) -> Result<JsValue, JsValue> {
+        self._constructed_grid.layout()
     }
 }

@@ -12,14 +12,17 @@ const DEFAULT_SETTINGS = {
   themes: [], // empty = random
 };
 
-export default function App() {
+export default function App() 
+{
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [generated, setGenerated] = useState(false);
   const [wasmReady, setWasmReady] = useState(false);
 
-  useEffect(() => {
-    async function loadWasm() {
+  useEffect(() => 
+  {
+    async function loadWasm() 
+    {
       await init();
       setWasmReady(true);
     }
@@ -27,16 +30,19 @@ export default function App() {
     loadWasm();
   }, []);
 
-  function updateSetting(key, value) {
+  function updateSetting(key, value) 
+  {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleGenerate() {
+  function handleGenerate() 
+  {
     if (!wasmReady) return;
     setGenerated(true);
   }
 
-  function handleReset() {
+  function handleReset() 
+  {
     setSettings(DEFAULT_SETTINGS);
     setGenerated(false);
   }

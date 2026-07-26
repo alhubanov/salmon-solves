@@ -8,16 +8,20 @@ function parseGrid(gridStr) {
   return { cols: parseInt(match[1]), rows: parseInt(match[2]) };
 }
 
-export default function CrosswordGrid({ settings, generated }) {
+export default function CrosswordGrid({ settings, generated }) 
+{
   const { cols, rows } = parseGrid(settings.grid);
   const [cells, setCells] = useState([]);
   const [userInput, setUserInput] = useState({});
+  const gridType = settings.type;
 
-  useEffect(() => {
-    if (generated) {
-
+  useEffect(() => 
+  {
+    if (generated) 
+    {
       // TODO: incorporate all settings properly
-      let partial_settings = {
+      let partial_settings = 
+      {
         grid_type: settings.type,
         difficulty_level: settings.difficulty,
         themes: settings.themes
@@ -25,12 +29,29 @@ export default function CrosswordGrid({ settings, generated }) {
 
       const grid = build_crossword_grid(cols, rows, partial_settings);
       // TODO: don't flatten
-      const cells = grid.layout.flat();
-
-      setCells(cells);
+      setCells(grid.layout.flat());
       setUserInput({});
     }
   }, [generated, settings.grid, settings.type]);
+
+  function normalizeCell(cell, gridType) 
+  {
+    // Scandi grid
+    if (gridType === "Scandi") 
+    {
+      if (cell.cell == null) { return { kind: "black" }; }
+      if ("Clue" in cell.cell) { return { kind: "black" }; } // clue text not rendered yet 
+      if ("Letter" in cell.cell) { return { kind: "letter", value: cell.cell.Letter.cell_value }; }
+      
+      return { kind: "black" };
+    }
+
+    // Simple grid
+    return {
+      kind: cell.cell_state === "NotFilled" ? "black" : "letter",
+      value: cell.cell_value ?? "",
+    };
+  }
 
   if (!generated || cells.length === 0) {
     return (
@@ -41,24 +62,10 @@ export default function CrosswordGrid({ settings, generated }) {
           <rect x="4" y="26" width="18" height="18" rx="2" fill="#e4e2db"/>
           <rect x="26" y="26" width="18" height="18" rx="2" fill="#6c63ff" opacity="0.3"/>
         </svg>
-        <p style={{ fontSize: "20px" }}>Configure your settings and hit<br /><strong>Generate crossword</strong> to start.</p>
+        <p style={{ fontSize: "20px" }}>Configure your settings and press<br /><strong>Generate crossword</strong> to start.</p>
       </div>
     );
   }
-
-  // Simple cell numbering: number a white cell if it starts an across or down word
-  function getCellNumber(idx) {
-    const r = Math.floor(idx / cols);
-    const c = idx % cols;
-    if (cells[idx].cell_state === "NotFilled") return null;
-    const startsAcross = c === 0 || cells[idx - 1]?.cell_state === "NotFilled";
-    const startsDown   = r === 0 || cells[idx - cols]?.cell_state === "NotFilled";
-    const hasAcross    = c + 1 < cols && cells[idx + 1]?.cell_state !== "NotFilled";
-    const hasDown      = r + 1 < rows && cells[idx + cols]?.cell_state !== "NotFilled";
-    return (startsAcross && hasAcross) || (startsDown && hasDown) ? true : null;
-  }
-
-  let cellNumber = 0;
 
   return (
     <div className="grid-wrapper">
@@ -67,27 +74,20 @@ export default function CrosswordGrid({ settings, generated }) {
         style={{ gridTemplateColumns: `repeat(${cols}, 34px)` }}
       >
         {cells.map((cell, idx) => {
-          const num = getCellNumber(idx);
-          if (num) cellNumber++;
-          const n = num ? cellNumber : null;
+          const normalizedCell = normalizeCell(cell, gridType);
 
-          const isBlack = cell.cell_state === "NotFilled";
+          if (normalizedCell.kind === "black") {
+            return <div key={idx} className="grid-cell black" />;
+          }
 
           return (
-            <div key={idx} className={`grid-cell ${isBlack ? "black" : "white"}`}>
-              {!isBlack && (
-                <>
-                  {n && <span className="cell-number">{n}</span>}
-                  <input
-                    maxLength={1}
-                    value={userInput[idx] ?? cell.cell_value ?? ""}
-                    onChange={(e) =>
-                      setUserInput((prev) => ({ ...prev, [idx]: e.target.value }))
-                    }
-                    aria-label={`cell ${idx}`}
-                  />
-                </>
-              )}
+            <div key={idx} className="grid-cell white">
+              <input
+                maxLength={1}
+                value={userInput[idx] ?? normalizedCell.value ?? ""}
+                onChange={(e) => setUserInput((prev) => ({ ...prev, [idx]: e.target.value })) }
+                aria-label={`cell ${idx}`}
+              />
             </div>
           );
         })}
