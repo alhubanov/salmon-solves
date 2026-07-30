@@ -1,14 +1,11 @@
 use rand::prelude::*;
 use serde::Serialize;
-
-use super::clue::Clue;
 use super::slot::SlotDirection;
-use super::letter::Letter;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Serialize)]
 pub enum CellType {
-    Clue(Clue),
-    Letter(Letter)
+    Clue(Vec<(String, u32, SlotDirection)>),
+    Letter(Option<char>, Vec<u32>)
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash, Serialize)]
@@ -20,7 +17,6 @@ pub enum PossibleCellState {
 #[derive(PartialEq, Eq, Debug, Serialize)]
 pub struct GridCell {
     pub cell: Option<CellType>,
-    pub slot_ids: Option<Vec<u32>>,
     pub assigned_cell_states: Vec<PossibleCellState>,
     pub possible_remaining_cell_states: Vec<PossibleCellState>
 }
@@ -61,7 +57,6 @@ impl GridCell {
 
         Self { 
             cell: None,
-            slot_ids: None,
             assigned_cell_states: Vec::new(),
             possible_remaining_cell_states: cell_states
         }
@@ -93,7 +88,7 @@ impl GridCell {
         if self.assigned_cell_states.iter().any(|state| matches!(state, PossibleCellState::Letter)) {
             match &self.cell {
                 None => print!("_"),
-                Some(CellType::Letter(letter)) => print!("{}", letter.get_cell_value()),
+                Some(CellType::Letter(letter, _)) => print!("{}", letter.unwrap()),
                 _ => print!("0 ")
             }
 
@@ -194,18 +189,110 @@ impl GridCell {
         return self.assigned_cell_states.contains(&PossibleCellState::Clue(clue_kind));
     }
 
-    pub fn add_slot_id(&mut self, slot_id: Option<u32>) -> () {
+    pub fn get_foreign_slot_id_from_letter_cell(&self, slot_id: u32) -> Option<&u32> 
+    {
+        match &self.cell 
+        {
+            Some(CellType::Letter(_, recorded_ids)) => 
+            { 
+                return recorded_ids.iter().find(|elem| *elem != &slot_id);
+            },
+            _ => panic!("Retrieving slot id record to non-letter cell.")
+        };
+    }
+
+    pub fn contains_slot_id(&self, slot_id: u32) -> bool
+    {
+        match &self.cell 
+        {
+            None => return false,
+            Some(CellType::Letter(_, recorded_ids)) => 
+            { 
+                return recorded_ids.contains(&slot_id); 
+            },
+            _ => panic!("Checking if slot id record is contained in a non-letter cell.")
+        };
+    }
+
+    pub fn add_slot_id_to_letter_cell(&mut self, slot_id: Option<u32>) -> () {
         if let None = slot_id {
             return;
         }
 
-        match &mut self.slot_ids {
-            Some(vector) => { vector.push(slot_id.unwrap()); },
-            None => {
+        match &mut self.cell 
+        {
+            None => 
+            {
                 let mut new_vec : Vec<u32> = Vec::new();
                 new_vec.push(slot_id.unwrap());
-                self.slot_ids = Some(new_vec);
-            }
+                self.cell = Some(CellType::Letter(None, new_vec));
+            },
+            Some(CellType::Letter(_, recorded_ids)) => 
+            { 
+                recorded_ids.push(slot_id.unwrap()); 
+            },
+            _ => panic!("Adding slot id record to non-letter cell.")
         };
+    }
+
+    pub fn append_clue(&mut self, slot_id: u32, slot_direction: SlotDirection) -> ()
+    {
+        match &mut self.cell
+        {
+            Some(CellType::Clue(clue_vec)) => 
+            {
+                clue_vec.push(("description".to_string(), slot_id, slot_direction));
+            },
+            Some(CellType::Letter(_, _)) => panic!("Associated clue cell is a letter."),
+            None => panic!("Already exhausted possibility.")
+        }
+    }
+
+    pub fn has_no_letter_assigned(&self) -> bool
+    {
+        match &self.cell
+        {
+            // TODO: avoid cloning the vector here
+            Some(CellType::Letter(None, _)) => { return true; },
+            None => { return true; }
+            _ => { return false; }
+        }
+    }
+
+    pub fn assign_letter(&mut self, letter: char) -> ()
+    {
+        match &mut self.cell
+        {
+            // TODO: avoid cloning the vector here
+            Some(CellType::Letter(_, recorded_ids)) => { self.cell = Some(CellType::Letter(Some(letter), recorded_ids.clone())) },
+            None => { self.cell = Some(CellType::Letter(Some(letter), Vec::new())) }
+            _ => panic!("Assinging letter to a non-letter cell.")
+        }
+    }
+
+    pub fn discard_letter(&mut self) -> ()
+    {
+        match &mut self.cell
+        {
+            // TODO: avoid cloning the vector here
+            Some(CellType::Letter(_, recorded_ids)) => { self.cell = Some(CellType::Letter(None, recorded_ids.clone())) },
+            None => { return; }
+            _ => panic!("Discarding letter from a non-letter cell.")
+        }
+    }
+
+    pub fn get_slot_ids_owned_by_crossing_slot<F>(&self, slot_id: u32, crossing_slot_has_word: &mut F) -> bool
+    where 
+        F: Fn(u32) -> bool,   
+    {
+        match &self.cell
+        {
+            Some(CellType::Letter(_, recorded_ids)) => 
+            { 
+                return recorded_ids.iter().any(|&id| id != slot_id && crossing_slot_has_word(id));
+            },
+            None => panic!("Retrieving slot ids from an empty cell."),
+            _ => panic!("Retrieving slot ids from a non-letter cell when a letter cell is expected")
+        }
     }
 }

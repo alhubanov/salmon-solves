@@ -75,7 +75,7 @@ fn grid_is_valid()
                 let borrowed_cell = cell.borrow();
                 match borrowed_cell.cell.as_ref().unwrap() 
                 {
-                    Letter(letter) => { reconstructed_word.push(letter.get_cell_value()); },
+                    Letter(letter, _) => { reconstructed_word.push(letter.unwrap()); },
                     Clue(_) => panic!("Test failed at clue."),
                 }
             }

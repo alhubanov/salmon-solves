@@ -15,8 +15,6 @@ mod unit_tests;
 #[cfg(test)]
 mod test_helpers;
 
-mod clue;
-mod letter;
 pub mod gridcell;
 mod slot;
 mod slot_candidate;
@@ -113,7 +111,7 @@ impl ScandiGrid {
         &mut self.word_slots[self.slot_id_pos_map[&slot_id] as usize]
     }
 
-    fn get_len_and_associated_clue_coords(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, orientation: &str) -> Result<(i32, u32, u32), LayoutError> 
+    fn get_len_and_associated_clue_coords(&self, vertical_idx: u32, horizontal_idx: u32, end_of_grid: bool, orientation: &str) -> Result<(i32, u32, u32, SlotDirection), LayoutError> 
     {
         let mut slot_count = if end_of_grid { 0 } else { -1 };
         let mut curr_vertical_idx = vertical_idx;
@@ -121,7 +119,7 @@ impl ScandiGrid {
 
         let clue_direction = if orientation == "vertical" { SlotDirection::Down } else { SlotDirection::Right };
 
-        let (word_len, associated_clue_vertical_idx, associated_clue_horizontal_idx) = loop 
+        let (word_len, associated_clue_vertical_idx, associated_clue_horizontal_idx, slot_direction) = loop 
         {
             let (active_orientation_idx, baseline_orientation_idx) = 
                 if orientation == "vertical"
@@ -139,7 +137,7 @@ impl ScandiGrid {
                 {
                     return Err(LayoutError::IsNotAValidSlot);
                 }
-                break (slot_count, curr_vertical_idx, curr_horizontal_idx);
+                break (slot_count, curr_vertical_idx, curr_horizontal_idx, clue_direction);
             }
             else if active_orientation_idx == 0 
             {
@@ -148,12 +146,12 @@ impl ScandiGrid {
                 if orientation == "vertical" 
                 {
                     let out_horizontal_idx = if curr_horizontal_idx == 0 { curr_horizontal_idx } else { curr_horizontal_idx - 1 }; 
-                    break (slot_count, curr_vertical_idx, out_horizontal_idx); 
+                    break (slot_count, curr_vertical_idx, out_horizontal_idx, SlotDirection::DownOnRightSide); 
                 } 
                 else 
                 { 
                     let out_vertical_idx = if curr_vertical_idx == 0 { curr_vertical_idx } else { curr_vertical_idx - 1 }; 
-                    break (slot_count, out_vertical_idx, curr_horizontal_idx); 
+                    break (slot_count, out_vertical_idx, curr_horizontal_idx, SlotDirection::RightOnBottomSide); 
                 }
             }
 
@@ -161,23 +159,23 @@ impl ScandiGrid {
             if orientation == "vertical" { curr_vertical_idx -= 1; } else { curr_horizontal_idx -= 1; }
         };
 
-        return Ok((word_len, associated_clue_vertical_idx, associated_clue_horizontal_idx));
+        return Ok((word_len, associated_clue_vertical_idx, associated_clue_horizontal_idx, slot_direction));
     }
 
     fn get_max_len(&self, vertical_idx: u32, horizontal_idx: u32) -> i32 
     {
-        let (vertical_word_len, _, _) = self.get_len_and_associated_clue_coords(vertical_idx, horizontal_idx, false, "vertical").unwrap_or((0, 0, 0));
-        let (horizontal_word_len, _, _) = self.get_len_and_associated_clue_coords(vertical_idx, horizontal_idx, false, "horizontal").unwrap_or((0, 0, 0));
+        let (vertical_word_len, _, _, _) = self.get_len_and_associated_clue_coords(vertical_idx, horizontal_idx, false, "vertical").unwrap_or((0, 0, 0, SlotDirection::Down));
+        let (horizontal_word_len, _, _, _) = self.get_len_and_associated_clue_coords(vertical_idx, horizontal_idx, false, "horizontal").unwrap_or((0, 0, 0, SlotDirection::Right));
 
         return max(vertical_word_len, horizontal_word_len);
     }
 
-    fn get_slot_attributes(&self, mut vertical_idx: u32, mut horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>, orientation: &str) -> Result<(i32, Vec<Rc<RefCell<GridCell>>>, Rc<RefCell<GridCell>>), LayoutError> 
+    fn get_slot_attributes(&self, mut vertical_idx: u32, mut horizontal_idx: u32, end_of_grid: bool, slot_id: Option<u32>, orientation: &str) -> Result<(i32, Vec<Rc<RefCell<GridCell>>>, Rc<RefCell<GridCell>>, SlotDirection), LayoutError> 
     {
         let start_position = if end_of_grid { 0 } else { -1 };
 
         let mut slot_cells : Vec<Rc<RefCell<GridCell>>> = Vec::new();
-        let (word_len, associated_clue_vertical_idx, associated_clue_horizontal_idx) = self.get_len_and_associated_clue_coords(vertical_idx, horizontal_idx, end_of_grid, orientation)?;
+        let (word_len, associated_clue_vertical_idx, associated_clue_horizontal_idx, slot_direction) = self.get_len_and_associated_clue_coords(vertical_idx, horizontal_idx, end_of_grid, orientation)?;
         let associated_clue_cell = Rc::clone(&self.layout[associated_clue_vertical_idx as usize][associated_clue_horizontal_idx as usize]);
 
         for idx in start_position..word_len 
@@ -188,7 +186,7 @@ impl ScandiGrid {
                 continue; 
             }
 
-            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().add_slot_id(slot_id);
+            self.layout[vertical_idx as usize][horizontal_idx as usize].borrow_mut().add_slot_id_to_letter_cell(slot_id);
             slot_cells.push(Rc::clone(&self.layout[vertical_idx as usize][horizontal_idx as usize]));  
 
             if idx < word_len - 1 {
@@ -197,7 +195,7 @@ impl ScandiGrid {
         }
 
         slot_cells.reverse();
-        return Ok((word_len, slot_cells, associated_clue_cell));
+        return Ok((word_len, slot_cells, associated_clue_cell, slot_direction));
     }
 
     fn create_slot(&mut self, 
@@ -211,9 +209,9 @@ impl ScandiGrid {
         let consider_last_cell = !encountered_clue_cell;
         let slot_attributes = self.get_slot_attributes(vertical_idx, horizontal_idx, consider_last_cell, Some(*slot_id), orientation);
 
-        let (word_length, slot_cells, associated_clue_cell) = match slot_attributes 
+        let (word_length, slot_cells, associated_clue_cell, slot_direction) = match slot_attributes 
         {
-            Ok((w, s, c)) => (w, s, c),
+            Ok((w, s, c, d)) => (w, s, c, d),
             Err(_) => { return; } 
         };
         
@@ -227,6 +225,7 @@ impl ScandiGrid {
         let available_candidates = Rc::clone(dictionary);
         let slot = Slot::new(
                     *slot_id,
+                    slot_direction,
                     slot_cells,
                     associated_clue_cell,
                     available_candidates

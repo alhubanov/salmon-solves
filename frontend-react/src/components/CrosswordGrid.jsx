@@ -62,9 +62,17 @@ export default function CrosswordGrid({ settings, generated })
     // Scandi grid
     if (gridType === "Scandi") 
     {
-      if (cell.cell == null) { return { kind: "black" }; }
-      if ("Clue" in cell.cell) { return { kind: "black" }; } // clue text not rendered yet 
-      if ("Letter" in cell.cell) { return { kind: "letter", value: cell.cell.Letter.cell_value }; }
+      if (cell.cell == null) { return { kind: "null" }; } // this should never be the case
+      
+      if ("Clue" in cell.cell) 
+      { 
+        return { kind: "black", description: cell.cell.Clue.hint }; 
+      } 
+      
+      if ("Letter" in cell.cell) 
+      { 
+        return { kind: "letter", value: cell.cell.Letter.cell_value }; 
+      }
       
       return { kind: "black" };
     }
@@ -101,6 +109,10 @@ export default function CrosswordGrid({ settings, generated })
       >
         {cells.map((cell, idx) => {
           const normalizedCell = normalizeCell(cell, gridType);
+
+          if (normalizedCell.kind === "null") {
+            return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
+          }
 
           if (normalizedCell.kind === "black") {
             return <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize }} />;

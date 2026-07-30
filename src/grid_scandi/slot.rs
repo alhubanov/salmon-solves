@@ -8,8 +8,6 @@ use std::cell::RefCell;
 use crate::grid_scandi::gridcell::CellType;
 use crate::grid_scandi::slot::CellType::Letter;
 use crate::grid_scandi::slot::CellType::Clue;
-use crate::grid_scandi::clue;
-use crate::grid_scandi::letter;
 
 use crate::grid_scandi::LayoutError;
 use crate::grid_scandi::gridcell::GridCell;
@@ -27,6 +25,7 @@ pub enum SlotDirection {
 #[derive(PartialEq, Eq, Debug)]
 pub struct Slot {
     slot_id: u32,
+    slot_direction: SlotDirection,
     slot_cells: Vec<Rc<RefCell<GridCell>>>,
     associated_clue_cell: Rc<RefCell<GridCell>>,
     selected_word: Option<String>,
@@ -39,6 +38,7 @@ pub struct Slot {
 impl Slot {
     pub fn new(
         slot_id: u32,
+        slot_direction: SlotDirection,
         slot_cells: Vec<Rc<RefCell<GridCell>>>,
         associated_clue_cell: Rc<RefCell<GridCell>>,
         dictionary: Rc<RefCell<Dictionary>>
@@ -54,6 +54,7 @@ impl Slot {
         Self 
         { 
             slot_id, 
+            slot_direction,
             slot_cells,
             associated_clue_cell,
             selected_word, 
@@ -95,12 +96,13 @@ impl Slot {
     {
 
         let mut crossing_slot_ids : Vec<(u32, u32)> = Vec::new();
-        for (idx, cell) in self.slot_cells.iter().enumerate() 
+        for (idx, gridcell) in self.slot_cells.iter().enumerate() 
         {
-            let cell_foreign_crossing_id : Option<u32> = cell.borrow().slot_ids.as_ref().unwrap().iter().find(|elem| *elem != &self.slot_id).copied();
+            let borrowed_gridcell = gridcell.borrow();
+            let cell_foreign_crossing_id : Option<&u32> = borrowed_gridcell.get_foreign_slot_id_from_letter_cell(self.slot_id);
             if cell_foreign_crossing_id.is_some() 
             {
-                crossing_slot_ids.push((idx as u32, cell_foreign_crossing_id.unwrap()));
+                crossing_slot_ids.push((idx as u32, *cell_foreign_crossing_id.unwrap()));
             }
         }
 
@@ -122,7 +124,7 @@ impl Slot {
             let borrowed_cell = cell.borrow();
             match &borrowed_cell.cell 
             {
-                Some(Letter(letter)) => pattern[idx] = Some(letter.get_cell_value()),
+                Some(Letter(letter, _)) => pattern[idx] = *letter,
                 Some(Clue(_)) => panic!("Encountered clue cell in slot cells."),
                 None => pattern[idx] = None,
             }
@@ -165,18 +167,18 @@ impl Slot {
     fn get_prospective_pattern(&self, slot_id: u32, letter: char) -> Vec<Option<char>> 
     {
         let mut pattern = Vec::new();
-        for cell in self.slot_cells.iter()
+        for gridcell in self.slot_cells.iter()
         {
-            if cell.borrow().slot_ids.as_ref().is_some_and(|ids| ids.contains(&slot_id)) 
+            if gridcell.borrow().contains_slot_id(slot_id)  
             {
                 pattern.push(Some(letter));
             }
             else 
             {
-                let borrowed_cell = cell.borrow();
+                let borrowed_cell = gridcell.borrow();
                 match &borrowed_cell.cell 
                 {
-                    Some(Letter(letter)) => pattern.push(Some(letter.get_cell_value())),
+                    Some(Letter(letter, _)) => pattern.push(*letter),
                     Some(Clue(_)) => panic!("Encountered clue cell in slot cells."),
                     None => pattern.push(None),
                 }
@@ -233,51 +235,66 @@ impl Slot {
         return Ok(sampled_word);
     }
 
+    fn assign_associated_gridcell(&mut self) -> ()
+    {
+        let mut clue_vec = Vec::new();
+        clue_vec.push(("description".to_string(), self.slot_id, self.slot_direction));
+
+        self.associated_clue_cell.borrow_mut().cell = Some(CellType::Clue(clue_vec));
+    }
+
     pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String, placement_order: usize) -> () 
     {   
-        let mut dictionary = self.dictionary.borrow_mut();
-
-        // Assume a valid candidate always exists     
-        if let Some(candidate) = dictionary
-                                     .get_words_for_length_mut(self.slot_cells.len())
-                                     .iter_mut()
-                                     .find(|candidate| candidate.get_word() == &nominated_word)
         {
-            candidate.set_assigned_slot_id(self.slot_id);
+            let mut dictionary = self.dictionary.borrow_mut();
+
+            // Assume a valid candidate always exists     
+            if let Some(candidate) = dictionary
+                                        .get_words_for_length_mut(self.slot_cells.len())
+                                        .iter_mut()
+                                        .find(|candidate| candidate.get_word() == &nominated_word)
+            {
+                candidate.set_assigned_slot_id(self.slot_id);
+            }
         }
         
         // There is a possibility to use .iter.zip() here to avoid calling .nth(). 
         // It is only faster though if the majority of instances, where this loop runs, consist mostly of None cells. 
-        for (idx, cell) in self.slot_cells.iter().enumerate() {
-            if cell.borrow().cell.is_none() {
-                cell.borrow_mut().cell = Some(CellType::Letter(letter::Letter::new(nominated_word.chars().nth(idx).unwrap())));
+        for (idx, gridcell) in self.slot_cells.iter().enumerate() 
+        {
+            if gridcell.borrow().has_no_letter_assigned() 
+            {
+                gridcell.borrow_mut().assign_letter(nominated_word.chars().nth(idx).unwrap());
             }
         }
 
-        // TODO: add proper hints to clues
-        self.associated_clue_cell.borrow_mut().cell = Some(CellType::Clue(clue::Clue::new(&"".to_string())));
+        if self.associated_clue_cell.borrow_mut().cell.is_none()
+        {
+            self.assign_associated_gridcell();
+        }
+        else // this assumes that associated clue cell cannot possibly be a letter
+        {
+            self.associated_clue_cell.borrow_mut().append_clue(self.slot_id, self.slot_direction);
+        }
 
         self.selected_word = Some(nominated_word);
         self.placement_order = Some(placement_order);
     }
 
-    pub fn deallocate_and_discard_word<F>(&mut self, crossing_slot_has_word: F) -> ()
+    pub fn deallocate_and_discard_word<F>(&mut self, mut crossing_slot_has_word: F) -> ()
     where
         F: Fn(u32) -> bool,
     {
         for cell in self.slot_cells.iter() 
         {
             let borrowed = cell.borrow();
-            let owned_by_active_crossing = borrowed.slot_ids
-                .as_ref()
-                .map(|ids| ids.iter().any(|&id| id != self.slot_id && crossing_slot_has_word(id)))
-                .unwrap_or(false);
+            let owned_by_active_crossing = borrowed.get_slot_ids_owned_by_crossing_slot(self.slot_id, &mut crossing_slot_has_word);
 
             drop(borrowed);
 
             if !owned_by_active_crossing 
             {
-                cell.borrow_mut().cell = None;
+                cell.borrow_mut().discard_letter();
             }
         }
 
