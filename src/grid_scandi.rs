@@ -96,7 +96,8 @@ impl Grid for ScandiGrid {
         }
     }
 
-    fn layout(&self) -> Result<JsValue, JsValue> {
+    fn layout(&self) -> Result<JsValue, JsValue> 
+    {
         let serializer = serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true).serialize_missing_as_null(true);
         self.layout
             .serialize(&serializer)

@@ -66,12 +66,13 @@ export default function CrosswordGrid({ settings, generated })
       
       if ("Clue" in cell.cell) 
       { 
-        return { kind: "black", description: cell.cell.Clue.hint }; 
+        var clue_vector = cell.cell.Clue;
+        return { kind: "black", clue_vector: clue_vector }; 
       } 
       
       if ("Letter" in cell.cell) 
       { 
-        return { kind: "letter", value: cell.cell.Letter.cell_value }; 
+        return { kind: "letter", value: cell.cell.Letter[0] }; 
       }
       
       return { kind: "black" };
@@ -82,6 +83,62 @@ export default function CrosswordGrid({ settings, generated })
       kind: cell.cell_state === "NotFilled" ? "black" : "letter",
       value: cell.cell_value ?? "",
     };
+  }
+
+  function ClueArrow({ direction, cellSize }) {
+    const stroke = "#000";
+    const common = { position: "absolute", pointerEvents: "none", zIndex: 2 };
+
+    switch (direction) {
+      case "Right":
+        return (
+          <svg
+            style={{ ...common, top: "50%", left: "85%", width: cellSize * 0.6, height: cellSize * 0.4, transform: "translateY(-50%)" }}
+            viewBox="0 0 60 40"
+          >
+            <line x1="0" y1="20" x2="22.5" y2="20" stroke={stroke} strokeWidth="6" />
+            <polygon points="22.5,8 37.5,20 22.5,32" fill={stroke} />
+          </svg>
+        );
+
+      case "Down":
+        return (
+          <svg
+            style={{ ...common, left: "50%", top: "85%", width: cellSize * 0.4, height: cellSize * 0.6, transform: "translateX(-50%)" }}
+            viewBox="0 0 40 60"
+          >
+            <line x1="20" y1="0" x2="20" y2="22.5" stroke={stroke} strokeWidth="6" />
+            <polygon points="8,22.5 20,37.5 32,22.5" fill={stroke} />
+          </svg>
+        );
+
+      // enters the cell BELOW, drops down, then turns right
+      case "RightOnBottomSide":
+        return (
+          <svg
+            style={{ ...common, left: 0, top: "100%", width: cellSize, height: cellSize }}
+            viewBox="0 0 100 100"
+          >
+            <polyline points="10,0 10,25 27.5,25" fill="none" stroke={stroke} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+            <polygon points="27.5,13 40,25 27.5,37" fill={stroke} />
+          </svg>
+        );
+
+      // enters the cell to the RIGHT, moves in, then turns down
+      case "DownOnRightSide":
+        return (
+          <svg
+            style={{ ...common, left: "100%", top: 0, width: cellSize, height: cellSize }}
+            viewBox="0 0 100 100"
+          >
+            <polyline points="0,10 25,10 25,27.5" fill="none" stroke={stroke} strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" />
+            <polygon points="13,27.5 25,40 37,27.5" fill={stroke} />
+          </svg>
+        );
+
+      default:
+        return null;
+    }
   }
 
   if (!generated || cells.length === 0) {
@@ -110,12 +167,20 @@ export default function CrosswordGrid({ settings, generated })
         {cells.map((cell, idx) => {
           const normalizedCell = normalizeCell(cell, gridType);
 
-          if (normalizedCell.kind === "null") {
+          if (normalizedCell.kind === "null") 
+          {
             return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
           }
 
-          if (normalizedCell.kind === "black") {
-            return <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize }} />;
+          if (normalizedCell.kind === "black") 
+          {
+            return (
+              <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize, position: "relative" }}>
+                {normalizedCell.clue_vector?.map(([label, number, direction], i) => (
+                  <ClueArrow key={i} direction={direction} cellSize={cellSize} />
+                ))}
+              </div>
+            );
           }
 
           return (
