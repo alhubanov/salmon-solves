@@ -382,6 +382,26 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-hint);
 }
 
+.grid-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.grid-hint kbd {
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
 .grid-toolbar {
   display: flex;
   gap: 12px;
