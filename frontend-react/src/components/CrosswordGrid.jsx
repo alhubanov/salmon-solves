@@ -16,8 +16,19 @@ const VERTICAL_DIRECTIONS = ["Down", "DownOnRightSide"];
 
 // Kept at module scope so typing in the grid re-renders the lists in place rather than
 // remounting them, which would throw away how far the user had scrolled.
-function ClueList({ title, clues })
+function ClueList({ title, clues, selectedSlotId, selectionTick, onSelect })
 {
+  const selectedRow = useRef(null);
+
+  // Selecting a slot in the grid can pick a clue that is scrolled out of view, so bring it back.
+  // "nearest" keeps this to the minimum scroll inside the list itself — a row that is already
+  // visible does not move, and the surrounding page is left alone. This keys off the tick rather
+  // than the id so re-picking the slot that is already selected still scrolls back to it.
+  useEffect(() =>
+  {
+    selectedRow.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedSlotId, selectionTick]);
+
   return (
     <section className="clue-list">
       <h3>{title} <span className="clue-list-count">{clues.length}</span></h3>
@@ -28,8 +39,16 @@ function ClueList({ title, clues })
           <ol>
             {clues.map(({ number, description }) => (
               <li key={number}>
-                <span className="clue-list-number">{number}</span>
-                <span className="clue-list-text">{description}</span>
+                <button
+                  type="button"
+                  ref={number === selectedSlotId ? selectedRow : null}
+                  className={`clue-row ${number === selectedSlotId ? "selected" : ""}`}
+                  aria-pressed={number === selectedSlotId}
+                  onClick={() => onSelect(number)}
+                >
+                  <span className="clue-list-number">{number}</span>
+                  <span className="clue-list-text">{description}</span>
+                </button>
               </li>
             ))}
           </ol>
@@ -43,7 +62,14 @@ export default function CrosswordGrid({ settings, generated })
   const { cols, rows } = parseGrid(settings.grid);
   const [cells, setCells] = useState([]);
   const [userInput, setUserInput] = useState({});
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
+  // Bumped on every selection, so picking the already-selected slot still counts as an event.
+  const [selectionTick, setSelectionTick] = useState(0);
   const gridType = settings.type;
+
+  // Flat cell index → the <input> element, so selecting a clue can move focus into the grid.
+  const inputRefs = useRef({});
+  const focusFirstCell = useRef(false);
 
   const containerRef = useRef(null);
   const [containerSize, setContainerSize] = useState({ width: 800, height: 800 });
@@ -68,7 +94,7 @@ export default function CrosswordGrid({ settings, generated })
   const cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, rawCellSize));
 
   // Walk every clue square once and split its clues into the two lists shown beside the grid.
-  const { horizontalClues, verticalClues } = useMemo(() =>
+  const { horizontalClues, verticalClues, horizontalSlotIds } = useMemo(() =>
   {
     const horizontal = [];
     const vertical = [];
@@ -90,8 +116,140 @@ export default function CrosswordGrid({ settings, generated })
     horizontal.sort((a, b) => a.number - b.number);
     vertical.sort((a, b) => a.number - b.number);
 
-    return { horizontalClues: horizontal, verticalClues: vertical };
+    return {
+      horizontalClues: horizontal,
+      verticalClues: vertical,
+      horizontalSlotIds: new Set(horizontal.map((clue) => clue.number)),
+    };
   }, [cells, gridType]);
+
+  // Every letter cell carries the ids of the slots it belongs to, so a slot resolves to its cells
+  // by filtering on that. The layout is flattened row-major, so ascending index is already reading
+  // order for both axes — left-to-right across a row, top-to-bottom down a column.
+  const selectedSlotCells = useMemo(() =>
+  {
+    if (selectedSlotId == null) return [];
+
+    const indices = [];
+
+    cells.forEach((cell, idx) =>
+    {
+      const slotIds = cell?.cell?.Letter?.[1];
+      if (slotIds?.includes(selectedSlotId)) indices.push(idx);
+    });
+
+    return indices;
+  }, [cells, selectedSlotId]);
+
+  const highlightedCells = useMemo(() => new Set(selectedSlotCells), [selectedSlotCells]);
+
+  // Consecutive indices mean the slot runs across a row; a gap of one full row means down a column.
+  const slotAxis = useMemo(() =>
+  {
+    if (selectedSlotCells.length < 2) return "horizontal";
+    return selectedSlotCells[1] - selectedSlotCells[0] === 1 ? "horizontal" : "vertical";
+  }, [selectedSlotCells]);
+
+  // Picking a clue jumps the caret to the slot's first letter, but clicking a cell in the grid must
+  // leave the caret where it was clicked, so only the clue list arms this.
+  useEffect(() =>
+  {
+    if (!focusFirstCell.current) return;
+
+    focusFirstCell.current = false;
+    if (selectedSlotCells.length > 0) focusCell(selectedSlotCells[0]);
+  }, [selectedSlotCells, selectionTick]);
+
+  function selectSlot(slotId, focusFirst)
+  {
+    focusFirstCell.current = focusFirst;
+    setSelectedSlotId(slotId);
+    setSelectionTick((tick) => tick + 1);
+  }
+
+  function selectSlotFromClue(slotId)
+  {
+    selectSlot(slotId, true);
+  }
+
+  // Clicking a letter cell selects the slot running through it. Crossing cells belong to two, and
+  // the horizontal one wins; the native click leaves focus on the cell that was clicked.
+  function handleCellClick(idx)
+  {
+    const slotIds = cells[idx]?.cell?.Letter?.[1];
+    if (!slotIds?.length) return;
+
+    const horizontalId = slotIds.find((id) => horizontalSlotIds.has(id));
+    selectSlot(horizontalId ?? slotIds[0], false);
+  }
+
+  function focusCell(idx)
+  {
+    const input = inputRefs.current[idx];
+    if (!input) return;
+
+    input.focus();
+    input.select(); // shows the letter as replaceable rather than parking the caret beside it
+  }
+
+  function clearCell(idx)
+  {
+    setUserInput((prev) => ({ ...prev, [idx]: "" }));
+  }
+
+  // Backspace and the arrow keys along the slot's own axis walk the caret through it. Arrows across
+  // the axis are left alone, since moving there would mean leaving the slot the user picked.
+  function handleCellKeyDown(idx, event)
+  {
+    const position = selectedSlotCells.indexOf(idx);
+    if (position === -1) return;
+
+    const [previousKey, nextKey] = slotAxis === "horizontal"
+      ? ["ArrowLeft", "ArrowRight"]
+      : ["ArrowUp", "ArrowDown"];
+
+    if (event.key === previousKey || event.key === nextKey)
+    {
+      event.preventDefault();
+
+      const step = event.key === nextKey ? 1 : -1;
+      const target = selectedSlotCells[position + step];
+      if (target !== undefined) focusCell(target);
+
+      return;
+    }
+
+    if (event.key === "Backspace")
+    {
+      event.preventDefault();
+
+      // Clear a filled cell in place; on an already-empty one, step back and clear that instead.
+      if (event.target.value !== "") { clearCell(idx); return; }
+
+      const target = selectedSlotCells[position - 1];
+      if (target === undefined) return;
+
+      clearCell(target);
+      focusCell(target);
+    }
+  }
+
+  // Typing a letter walks the caret to the next cell of the selected slot. The browser reports the
+  // character it actually inserted, so a keystroke replaces whatever the cell already held no
+  // matter where the caret sat inside it; a deletion reports null and empties the cell.
+  function handleCellChange(idx, inserted)
+  {
+    const letter = (inserted ?? "").slice(-1);
+
+    setUserInput((prev) => ({ ...prev, [idx]: letter }));
+
+    if (letter === "") return;
+
+    const position = selectedSlotCells.indexOf(idx);
+    if (position === -1 || position === selectedSlotCells.length - 1) return;
+
+    focusCell(selectedSlotCells[position + 1]);
+  }
 
   useEffect(() => 
   {
@@ -109,6 +267,8 @@ export default function CrosswordGrid({ settings, generated })
       // TODO: don't flatten
       setCells(grid.layout.flat());
       setUserInput({});
+      setSelectedSlotId(null);
+      inputRefs.current = {};
     }
   }, [generated, settings.grid, settings.type]);
 
@@ -299,11 +459,18 @@ export default function CrosswordGrid({ settings, generated })
             }
 
             return (
-              <div key={idx} className="grid-cell white" style={{ width: cellSize, height: cellSize }} >
+              <div
+                key={idx}
+                className={`grid-cell white ${highlightedCells.has(idx) ? "highlighted" : ""}`}
+                style={{ width: cellSize, height: cellSize }}
+              >
                 <input
-                  maxLength={1}
+                  ref={(el) => { inputRefs.current[idx] = el; }}
                   value={userInput[idx] ?? normalizedCell.value ?? ""}
-                  onChange={(e) => setUserInput((prev) => ({ ...prev, [idx]: e.target.value })) }
+                  onChange={(e) => handleCellChange(idx, e.nativeEvent.data)}
+                  onKeyDown={(e) => handleCellKeyDown(idx, e)}
+                  onFocus={(e) => e.target.select()}
+                  onClick={() => handleCellClick(idx)}
                   aria-label={`cell ${idx}`}
                 />
               </div>
@@ -320,8 +487,8 @@ export default function CrosswordGrid({ settings, generated })
 
       {hasClues && (
         <aside className="clue-panel" style={{ height: Math.max(280, rows * cellSize) }}>
-          <ClueList title="Horizontal" clues={horizontalClues} />
-          <ClueList title="Vertical" clues={verticalClues} />
+          <ClueList title="Horizontal" clues={horizontalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
+          <ClueList title="Vertical" clues={verticalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
         </aside>
       )}
     </div>

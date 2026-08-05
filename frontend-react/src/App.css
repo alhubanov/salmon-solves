@@ -7,6 +7,8 @@
   --text-secondary: #6b6a65;
   --text-hint: #a09f9a;
   --accent: #6c63ff;        /* purple — primary action */
+  --slot-highlight: #d7e9fd;      /* soft blue — cells of the selected slot */
+  --slot-highlight-row: #e9f3fe;  /* same hue, lighter, for the selected clue row */
   --accent-light: #eeedfe;
   --accent-dark: #3c3489;
   --sidebar-width: 300px;
@@ -262,6 +264,11 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--text-primary);
 }
 
+/* two classes, so this wins over the plain .grid-cell background */
+.grid-cell.highlighted {
+  background: var(--slot-highlight);
+}
+
 .grid-cell.white input {
   width: 100%;
   height: 100%;
@@ -338,15 +345,25 @@ button { font-family: inherit; cursor: pointer; }
   padding: 6px 0;
 }
 
-.clue-list li {
+.clue-list li { display: flex; }
+
+.clue-row {
   display: flex;
   gap: 10px;
+  flex: 1;
+  width: 100%;
   padding: 4px 14px;
+  border: none;
+  background: none;
   font-size: 13px;
   line-height: 1.45;
+  text-align: left;
+  transition: background 0.12s;
 }
 
-.clue-list li:hover { background: var(--bg); }
+.clue-row:hover { background: var(--bg); }
+.clue-row.selected { background: var(--slot-highlight-row); }
+.clue-row.selected .clue-list-number { color: var(--text-primary); }
 
 .clue-list-number {
   flex-shrink: 0;
