@@ -231,6 +231,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ── crossword grid ── */
+.grid-and-clues {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+}
+
 .grid-wrapper {
   display: flex;
   flex-direction: column;
@@ -277,6 +283,86 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-secondary);
   line-height: 1;
   pointer-events: none;
+}
+
+/* ── clue lists ── */
+/* The panel is pinned to the grid's pixel height so the two lists split it evenly and each
+   scrolls on its own instead of growing the page. */
+.clue-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.clue-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;            /* lets the <ol> scroll instead of stretching the panel */
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.clue-list h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.clue-list-count {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-hint);
+  font-variant-numeric: tabular-nums;
+}
+
+.clue-list ol {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  padding: 6px 0;
+}
+
+.clue-list li {
+  display: flex;
+  gap: 10px;
+  padding: 4px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.clue-list li:hover { background: var(--bg); }
+
+.clue-list-number {
+  flex-shrink: 0;
+  min-width: 2.5ch;
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.clue-list-text { color: var(--text-primary); }
+
+.clue-list-empty {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-hint);
 }
 
 .grid-toolbar {

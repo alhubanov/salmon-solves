@@ -1,12 +1,41 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Fragment, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { build_crossword_grid } from "../../../pkg/crossy";
 
 // Parse "15x15" → { cols: 15, rows: 15 }
-function parseGrid(gridStr) 
+function parseGrid(gridStr)
 {
   const match = gridStr.match(/(\d+)x(\d+)/);
   if (!match) return { cols: 15, rows: 15 };
   return { cols: parseInt(match[1]), rows: parseInt(match[2]) };
+}
+
+// Both arrow shapes on an axis belong to the same clue list: the "OnSide" variants only differ
+// in where the arrow turns, not in the direction the word is read.
+const HORIZONTAL_DIRECTIONS = ["Right", "RightOnBottomSide"];
+const VERTICAL_DIRECTIONS = ["Down", "DownOnRightSide"];
+
+// Kept at module scope so typing in the grid re-renders the lists in place rather than
+// remounting them, which would throw away how far the user had scrolled.
+function ClueList({ title, clues })
+{
+  return (
+    <section className="clue-list">
+      <h3>{title} <span className="clue-list-count">{clues.length}</span></h3>
+
+      {clues.length === 0
+        ? <p className="clue-list-empty">No clues in this direction.</p>
+        : (
+          <ol>
+            {clues.map(({ number, description }) => (
+              <li key={number}>
+                <span className="clue-list-number">{number}</span>
+                <span className="clue-list-text">{description}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+    </section>
+  );
 }
 
 export default function CrosswordGrid({ settings, generated }) 
@@ -38,6 +67,32 @@ export default function CrosswordGrid({ settings, generated })
   const rawCellSize = Math.min(containerSize.width / cols, containerSize.height / rows);
   const cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, rawCellSize));
 
+  // Walk every clue square once and split its clues into the two lists shown beside the grid.
+  const { horizontalClues, verticalClues } = useMemo(() =>
+  {
+    const horizontal = [];
+    const vertical = [];
+
+    if (gridType === "Scandi")
+    {
+      for (const cell of cells)
+      {
+        if (cell?.cell == null || !("Clue" in cell.cell)) continue;
+
+        for (const [description, number, direction] of dedupeClues(cell.cell.Clue))
+        {
+          if (HORIZONTAL_DIRECTIONS.includes(direction)) { horizontal.push({ number, description }); }
+          else if (VERTICAL_DIRECTIONS.includes(direction)) { vertical.push({ number, description }); }
+        }
+      }
+    }
+
+    horizontal.sort((a, b) => a.number - b.number);
+    vertical.sort((a, b) => a.number - b.number);
+
+    return { horizontalClues: horizontal, verticalClues: vertical };
+  }, [cells, gridType]);
+
   useEffect(() => 
   {
     if (generated) 
@@ -57,18 +112,35 @@ export default function CrosswordGrid({ settings, generated })
     }
   }, [generated, settings.grid, settings.type]);
 
-  function normalizeCell(cell, gridType) 
+  // A slot that gets backtracked and re-placed during generation has its clue appended to the
+  // cell more than once, so the same (number, direction) pair can arrive repeated. Drawing it
+  // twice stacks identical text and makes that number look bolder, so collapse them here.
+  function dedupeClues(clue_vector)
+  {
+    const seen = new Set();
+
+    return clue_vector.filter(([, number, direction]) =>
+    {
+      const key = `${number}:${direction}`;
+      if (seen.has(key)) return false;
+
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function normalizeCell(cell, gridType)
   {
     // Scandi grid
     if (gridType === "Scandi") 
     {
       if (cell.cell == null) { return { kind: "null" }; } // this should never be the case
       
-      if ("Clue" in cell.cell) 
-      { 
-        var clue_vector = cell.cell.Clue;
-        return { kind: "black", clue_vector: clue_vector }; 
-      } 
+      if ("Clue" in cell.cell)
+      {
+        var clue_vector = dedupeClues(cell.cell.Clue);
+        return { kind: "black", clue_vector: clue_vector };
+      }
       
       if ("Letter" in cell.cell) 
       { 
@@ -141,6 +213,42 @@ export default function CrosswordGrid({ settings, generated })
     }
   }
 
+  // The slot number, printed inside the clue square next to the arrow it belongs to.
+  function ClueNumber({ number, direction, cellSize }) {
+    const inset = "8%";
+    const common = {
+      position: "absolute",
+      pointerEvents: "none",
+      zIndex: 3,
+      color: "#fff",
+      fontSize: Math.max(8, cellSize * 0.21),
+      fontWeight: 600,
+      lineHeight: 1,
+      fontVariantNumeric: "tabular-nums",
+    };
+
+    switch (direction) {
+      // arrow leaves the middle of the right edge
+      case "Right":
+        return <span style={{ ...common, right: inset, top: "50%", transform: "translateY(-50%)" }}>{number}</span>;
+
+      // arrow leaves the middle of the bottom edge
+      case "Down":
+        return <span style={{ ...common, bottom: inset, left: "50%", transform: "translateX(-50%)" }}>{number}</span>;
+
+      // arrow leaves the top of the right edge
+      case "DownOnRightSide":
+        return <span style={{ ...common, right: inset, top: inset }}>{number}</span>;
+
+      // arrow leaves the left of the bottom edge
+      case "RightOnBottomSide":
+        return <span style={{ ...common, left: inset, bottom: inset }}>{number}</span>;
+
+      default:
+        return null;
+    }
+  }
+
   if (!generated || cells.length === 0) {
     return (
       <div className="empty-state">
@@ -155,52 +263,67 @@ export default function CrosswordGrid({ settings, generated })
     );
   }
 
+  const hasClues = horizontalClues.length > 0 || verticalClues.length > 0;
+
   return (
-    <div className="grid-wrapper">
-      <div
-        className="crossword-grid"
-        style={{
-          gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
-          gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
-        }}
-      >
-        {cells.map((cell, idx) => {
-          const normalizedCell = normalizeCell(cell, gridType);
+    <div className="grid-and-clues">
+      <div className="grid-wrapper">
+        <div
+          className="crossword-grid"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+            gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
+          }}
+        >
+          {cells.map((cell, idx) => {
+            const normalizedCell = normalizeCell(cell, gridType);
 
-          if (normalizedCell.kind === "null") 
-          {
-            return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
-          }
+            if (normalizedCell.kind === "null") 
+            {
+              return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
+            }
 
-          if (normalizedCell.kind === "black") 
-          {
+            if (normalizedCell.kind === "black") 
+            {
+              return (
+                <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize, position: "relative" }}>
+                  {/* each clue is a (description, slot number, direction) tuple */}
+                  {normalizedCell.clue_vector?.map(([, number, direction], i) => (
+                    <Fragment key={i}>
+                      <ClueArrow direction={direction} cellSize={cellSize} />
+                      <ClueNumber number={number} direction={direction} cellSize={cellSize} />
+                    </Fragment>
+                  ))}
+                </div>
+              );
+            }
+
             return (
-              <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize, position: "relative" }}>
-                {normalizedCell.clue_vector?.map(([label, number, direction], i) => (
-                  <ClueArrow key={i} direction={direction} cellSize={cellSize} />
-                ))}
+              <div key={idx} className="grid-cell white" style={{ width: cellSize, height: cellSize }} >
+                <input
+                  maxLength={1}
+                  value={userInput[idx] ?? normalizedCell.value ?? ""}
+                  onChange={(e) => setUserInput((prev) => ({ ...prev, [idx]: e.target.value })) }
+                  aria-label={`cell ${idx}`}
+                />
               </div>
             );
-          }
+          })}
+        </div>
 
-          return (
-            <div key={idx} className="grid-cell white" style={{ width: cellSize, height: cellSize }} >
-              <input
-                maxLength={1}
-                value={userInput[idx] ?? normalizedCell.value ?? ""}
-                onChange={(e) => setUserInput((prev) => ({ ...prev, [idx]: e.target.value })) }
-                aria-label={`cell ${idx}`}
-              />
-            </div>
-          );
-        })}
+        <div className="grid-toolbar">
+          <button onClick={() => setUserInput({})}>Restart ↺</button>
+          <span>|</span>
+          <button>Export to PDF ↑</button>
+        </div>
       </div>
 
-      <div className="grid-toolbar">
-        <button onClick={() => setUserInput({})}>Restart ↺</button>
-        <span>|</span>
-        <button>Export to PDF ↑</button>
-      </div>
+      {hasClues && (
+        <aside className="clue-panel" style={{ height: Math.max(280, rows * cellSize) }}>
+          <ClueList title="Horizontal" clues={horizontalClues} />
+          <ClueList title="Vertical" clues={verticalClues} />
+        </aside>
+      )}
     </div>
   );
 }
