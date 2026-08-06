@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import CrosswordGrid from "./components/CrosswordGrid";
-import TopBar from "./components/TopBar";
 import "./App.css";
 import init from "../../pkg/crossy"
 
@@ -49,8 +48,6 @@ export default function App()
 
   return (
     <div className="app-layout">
-      <TopBar/>
-
       <div className="app-body">
         <aside className={`sidebar ${sidebarOpen ? "sidebar--open" : "sidebar--closed"}`}>
           <Sidebar

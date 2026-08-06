@@ -12,7 +12,6 @@
   --accent-light: #eeedfe;
   --accent-dark: #3c3489;
   --sidebar-width: 300px;
-  --topbar-height: 52px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -43,53 +42,63 @@ button { font-family: inherit; cursor: pointer; }
   overflow: hidden;
 }
 
-/* ── top bar ── */
-.topbar {
-  height: var(--topbar-height);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.topbar-logo {
-  width: 100px;
-  display: flex;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-.sidebar-toggle {
-  margin-left: auto;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 18px;
-  color: var(--text-secondary);
-  font-size: 18px;
-  transition: background 0.5s;
-  margin-bottom: 20px;
-  flex-shrink: 0;
-}
-.sidebar-toggle:hover { background: var(--bg); }
-
 /* ── sidebar ── */
 .sidebar {
   width: var(--sidebar-width);
-  background: var(--surface);
+  background: var(--bg);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
   flex-shrink: 0;
-  padding: 24px 20px 32px;
+  padding: 20px 20px 32px;
   transition: width 0.25s ease;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
-.sidebar--open  { width: 340px; } 
-.sidebar--closed { width: 120px; } 
+.sidebar--open  { width: 340px; }
+.sidebar--closed { width: 120px; }
+
+/* collapsed the header has no room side by side, and the toggle must stay reachable */
+.sidebar--closed .sidebar-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.sidebar--closed .sidebar-logo { height: 26px; }
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+/* the logo is a wordmark, so it gets its natural aspect rather than the mockup's round badge */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  flex-shrink: 0;
+}
+
+.sidebar-logo img {
+  height: 100%;
+  width: auto;
+}
+
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.sidebar-toggle:hover { background: var(--border); color: var(--text-primary); }
 
 .sidebar-content {
   animation: fadeIn 0.15s ease;
@@ -100,37 +109,49 @@ button { font-family: inherit; cursor: pointer; }
   to   { opacity: 1; }
 }
 
-
-.sidebar h1 {
-  font-size: 20px;
+.sidebar-title {
+  font-size: 21px;
   font-weight: 700;
   margin-bottom: 28px;
   line-height: 1.2;
 }
 
-/* ── field groups ── */
+/* ── field rows ── */
 .field-group {
-  margin-bottom: 32px;
+  margin-bottom: 28px;
+}
+
+/* label on the left, control on the right */
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .field-label {
-  font-size: 16px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
-  color: var(--text-hint);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  width: 46px;
+}
+
+.field-label--block {
+  width: auto;
   margin-bottom: 12px;
 }
 
 /* ── select dropdown ── */
 .field-select {
+  flex: 1;
   width: 100%;
   padding: 9px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  background: var(--bg);
+  background-color: var(--surface);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 14px;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a09f9a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -139,29 +160,55 @@ button { font-family: inherit; cursor: pointer; }
 }
 .field-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* ── custom width / height ── */
+.dimension-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.dimension {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.field-select--compact {
+  width: 74px;
+  flex: none;
+  padding: 7px 10px;
+  font-weight: 400;
+}
+
 /* ── difficulty buttons ── */
 .diff-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 28px;
 }
 
 .diff-btn {
   flex: 1;
-  padding: 8px 4px;
+  padding: 9px 4px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  font-size: 16px;
-  color: var(--text-secondary);
+  border: 1px solid transparent;
+  font-size: 14px;
   transition: all 0.12s;
 }
-.diff-btn:hover { border-color: #c0bef8; color: var(--text-primary); }
-.diff-btn.active {
-  background: var(--accent-light);
-  border-color: var(--accent);
-  color: var(--accent-dark);
-  font-weight: 500;
-}
+
+.diff-btn--beginner { background: #e2f3e7; color: #2f7a4f; }
+.diff-btn--medium   { background: #e3ecfa; color: #34619c; }
+.diff-btn--expert   { background: #fadfe3; color: #a8434f; }
+
+.diff-btn:hover { filter: brightness(0.97); }
+
+.diff-btn--beginner.active { border-color: #2f7a4f; font-weight: 600; }
+.diff-btn--medium.active   { border-color: #34619c; font-weight: 600; }
+.diff-btn--expert.active   { border-color: #a8434f; font-weight: 600; }
 
 /* ── theme chips ── */
 .chip-grid {
@@ -171,12 +218,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .chip {
-  padding: 5px 11px;
+  padding: 6px 13px;
   border-radius: 20px;
   border: 1px solid var(--border);
-  background: var(--bg);
-  font-size: 16px;
-  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text-primary);
   transition: all 0.12s;
   user-select: none;
 }
@@ -186,12 +233,6 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--accent);
   color: var(--accent-dark);
   font-weight: 500;
-}
-
-.theme-hint {
-  font-size: 16px;
-  color: var(--text-hint);
-  margin-top: 8px;
 }
 
 /* ── action buttons ── */

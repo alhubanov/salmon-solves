@@ -14,6 +14,17 @@ function parseGrid(gridStr)
 const HORIZONTAL_DIRECTIONS = ["Right", "RightOnBottomSide"];
 const VERTICAL_DIRECTIONS = ["Down", "DownOnRightSide"];
 
+// The generator's Theme enum only knows these five. Chips outside it are offered in the sidebar but
+// have no counterpart yet, so they are dropped here — passing one through fails the whole call with
+// "unknown variant" and no grid comes back.
+const BACKEND_THEMES = {
+  "Arts & culture": "ArtsAndCulture",
+  "Nature & science": "NatureAndScience",
+  "Sports & games": "SportsAndGames",
+  "History & society": "HistoryAndSociety",
+  "Random": "Random",
+};
+
 // Kept at module scope so typing in the grid re-renders the lists in place rather than
 // remounting them, which would throw away how far the user had scrolled.
 function ClueList({ title, clues, selectedSlotId, selectionTick, onSelect })
@@ -313,7 +324,7 @@ export default function CrosswordGrid({ settings, generated })
       {
         grid_type: settings.type,
         difficulty_level: settings.difficulty,
-        themes: settings.themes
+        themes: settings.themes.map((theme) => BACKEND_THEMES[theme]).filter(Boolean)
       }
 
       const grid = build_crossword_grid(cols, rows, partial_settings);
