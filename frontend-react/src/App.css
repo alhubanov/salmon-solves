@@ -9,6 +9,8 @@
   --accent: #6c63ff;        /* purple — primary action */
   --slot-highlight: #d7e9fd;      /* soft blue — cells of the selected slot */
   --slot-highlight-row: #e9f3fe;  /* same hue, lighter, for the selected clue row */
+  --check-correct: #d6efdc;       /* soft green — slot answered correctly */
+  --check-incorrect: #fadcdf;     /* soft red — slot answered incorrectly */
   --accent-light: #eeedfe;
   --accent-dark: #3c3489;
   --sidebar-width: 300px;
@@ -307,10 +309,10 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--text-primary);
 }
 
-/* two classes, so this wins over the plain .grid-cell background */
-.grid-cell.highlighted {
-  background: var(--slot-highlight);
-}
+/* two classes, so these win over the plain .grid-cell background */
+.grid-cell.highlighted { background: var(--slot-highlight); }
+.grid-cell.check-correct { background: var(--check-correct); }
+.grid-cell.check-incorrect { background: var(--check-incorrect); }
 
 .grid-cell.white input {
   width: 100%;

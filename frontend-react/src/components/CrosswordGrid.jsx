@@ -78,6 +78,8 @@ export default function CrosswordGrid({ settings, generated })
   const [selectionTick, setSelectionTick] = useState(0);
   // The space hint only makes sense once there is a slot to switch away from.
   const [slotEverSelected, setSlotEverSelected] = useState(false);
+  // { correct: Set, incorrect: Set } of cell indices while a check is on screen, else null.
+  const [checkResults, setCheckResults] = useState(null);
   const gridType = settings.type;
 
   // Flat cell index → the <input> element, so selecting a clue can move focus into the grid.
@@ -202,6 +204,7 @@ export default function CrosswordGrid({ settings, generated })
     setSelectedSlotId(slotId);
     setSelectionTick((tick) => tick + 1);
     setSlotEverSelected(true);
+    clearCheck();
   }
 
   function selectSlotFromClue(slotId)
@@ -213,6 +216,8 @@ export default function CrosswordGrid({ settings, generated })
   // the horizontal one wins; the native click leaves focus on the cell that was clicked.
   function handleCellClick(idx)
   {
+    clearCheck();
+
     const slotIds = cells[idx]?.cell?.Letter?.[1];
     if (!slotIds?.length) return;
 
@@ -234,11 +239,50 @@ export default function CrosswordGrid({ settings, generated })
     setUserInput((prev) => ({ ...prev, [idx]: "" }));
   }
 
+  // The generator ships the solved letter in every cell, so that doubles as the answer key.
+  function solutionLetter(idx)
+  {
+    return (cells[idx]?.cell?.Letter?.[0] ?? "").toUpperCase();
+  }
+
+  function currentLetter(idx)
+  {
+    return (userInput[idx] ?? cells[idx]?.cell?.Letter?.[0] ?? "").toUpperCase();
+  }
+
+  // Judged per cell rather than per slot: the letter either matches the solution or it does not,
+  // and an empty cell counts as wrong. A correct letter stays green even when the words crossing
+  // it are still unfinished.
+  function checkAnswers()
+  {
+    const correct = new Set();
+    const incorrect = new Set();
+
+    cells.forEach((cell, idx) =>
+    {
+      if (cell?.cell == null || !("Letter" in cell.cell)) return;
+
+      const letter = currentLetter(idx);
+      (letter !== "" && letter === solutionLetter(idx) ? correct : incorrect).add(idx);
+    });
+
+    setCheckResults({ correct, incorrect });
+  }
+
+  // Any move back into the grid drops the check colouring. Returning the previous state unchanged
+  // when there is nothing to clear lets React skip the re-render.
+  function clearCheck()
+  {
+    setCheckResults((previous) => (previous === null ? previous : null));
+  }
+
   // Arrows along the slot's own axis walk the caret through it; arrows across the axis jump to the
   // neighbouring slot of the same axis, so up/down on a horizontal word moves between horizontal
   // words rather than leaving the list the user is working through.
   function handleCellKeyDown(idx, event)
   {
+    clearCheck(); // typing, arrows, backspace — any of them means the user is back at work
+
     const position = selectedSlotCells.indexOf(idx);
     if (position === -1) return;
 
@@ -333,6 +377,7 @@ export default function CrosswordGrid({ settings, generated })
       setUserInput({});
       setSelectedSlotId(null);
       setSlotEverSelected(false);
+      setCheckResults(null);
       inputRefs.current = {};
     }
   }, [generated, settings.grid, settings.type]);
@@ -527,10 +572,16 @@ export default function CrosswordGrid({ settings, generated })
             );
           }
 
+          // while a check is on screen its colouring replaces the blue selection band
+          const checkState = checkResults?.correct.has(idx) ? "check-correct"
+            : checkResults?.incorrect.has(idx) ? "check-incorrect"
+            : highlightedCells.has(idx) ? "highlighted"
+            : "";
+
           return (
             <div
               key={idx}
-              className={`grid-cell white ${highlightedCells.has(idx) ? "highlighted" : ""}`}
+              className={`grid-cell white ${checkState}`}
               style={{ width: cellSize, height: cellSize }}
             >
               <input
@@ -556,7 +607,7 @@ export default function CrosswordGrid({ settings, generated })
           </svg>
         </button>
 
-        <button>Check answers</button>
+        <button onClick={checkAnswers}>Check answers</button>
       </div>
 
       {hasClues && (
