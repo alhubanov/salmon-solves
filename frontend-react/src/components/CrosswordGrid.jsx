@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { build_crossword_grid } from "../../../pkg/crossy";
+import { exportCrosswordPdf } from "../exportPdf";
 
 // Parse "15x15" → { cols: 15, rows: 15 }
 function parseGrid(gridStr)
@@ -267,6 +268,26 @@ export default function CrosswordGrid({ settings, generated })
     });
 
     setCheckResults({ correct, incorrect });
+  }
+
+  // Hands the printer a plain description of what is on screen right now — letters as the user has
+  // them, not the solution — plus both clue lists.
+  function handleExportPdf()
+  {
+    const board = cells.map((cell, idx) =>
+    {
+      const normalized = normalizeCell(cell, gridType);
+
+      if (normalized.kind === "letter") return { kind: "letter", letter: currentLetter(idx) };
+      if (normalized.kind === "null") return { kind: "null" };
+
+      return {
+        kind: "black",
+        clues: (normalized.clue_vector ?? []).map(([, number, direction]) => [number, direction]),
+      };
+    });
+
+    exportCrosswordPdf({ cols, rows, board, horizontalClues, verticalClues });
   }
 
   // Any move back into the grid drops the check colouring. Returning the previous state unchanged
@@ -599,7 +620,7 @@ export default function CrosswordGrid({ settings, generated })
       </div>
 
       <div className="grid-toolbar">
-        <button>
+        <button onClick={handleExportPdf}>
           Export to PDF
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M7 9.5V1.5M7 1.5L4.25 4.25M7 1.5l2.75 2.75" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
