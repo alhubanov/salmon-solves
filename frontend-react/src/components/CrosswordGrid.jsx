@@ -27,7 +27,7 @@ const BACKEND_THEMES = {
 
 // Kept at module scope so typing in the grid re-renders the lists in place rather than
 // remounting them, which would throw away how far the user had scrolled.
-function ClueList({ title, clues, selectedSlotId, selectionTick, onSelect })
+function ClueList({ title, arrow, clues, selectedSlotId, selectionTick, onSelect })
 {
   const selectedRow = useRef(null);
 
@@ -42,7 +42,7 @@ function ClueList({ title, clues, selectedSlotId, selectionTick, onSelect })
 
   return (
     <section className="clue-list">
-      <h3>{title} <span className="clue-list-count">{clues.length}</span></h3>
+      <h3>{title} <span className="clue-list-arrow" aria-hidden="true">{arrow}</span></h3>
 
       {clues.length === 0
         ? <p className="clue-list-empty">No clues in this direction.</p>
@@ -57,7 +57,7 @@ function ClueList({ title, clues, selectedSlotId, selectionTick, onSelect })
                   aria-pressed={number === selectedSlotId}
                   onClick={() => onSelect(number)}
                 >
-                  <span className="clue-list-number">{number}</span>
+                  <span className="clue-list-number">{number}.</span>
                   <span className="clue-list-text">{description}</span>
                 </button>
               </li>
@@ -491,75 +491,80 @@ export default function CrosswordGrid({ settings, generated })
   const hasClues = horizontalClues.length > 0 || verticalClues.length > 0;
 
   return (
-    <div className="grid-and-clues">
-      <div className="grid-wrapper">
-        <div
-          className="crossword-grid"
-          style={{
-            gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
-            gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
-          }}
-        >
-          {cells.map((cell, idx) => {
-            const normalizedCell = normalizeCell(cell, gridType);
+    <div className={`grid-and-clues ${hasClues ? "grid-and-clues--with-clues" : ""}`}>
+      {/* always rendered, only made invisible, so revealing it does not shift the grid */}
+      <p className={`grid-hint ${slotEverSelected ? "" : "grid-hint--hidden"}`}>
+        Press <kbd>space</kbd> to switch between the horizontal and vertical word through the current cell.
+      </p>
 
-            if (normalizedCell.kind === "null") 
-            {
-              return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
-            }
+      <div
+        className="crossword-grid"
+        style={{
+          gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+          gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
+        }}
+      >
+        {cells.map((cell, idx) => {
+          const normalizedCell = normalizeCell(cell, gridType);
 
-            if (normalizedCell.kind === "black") 
-            {
-              return (
-                <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize, position: "relative" }}>
-                  {/* each clue is a (description, slot number, direction) tuple */}
-                  {normalizedCell.clue_vector?.map(([, number, direction], i) => (
-                    <Fragment key={i}>
-                      <ClueArrow direction={direction} cellSize={cellSize} />
-                      <ClueNumber number={number} direction={direction} cellSize={cellSize} />
-                    </Fragment>
-                  ))}
-                </div>
-              );
-            }
+          if (normalizedCell.kind === "null") 
+          {
+            return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
+          }
 
+          if (normalizedCell.kind === "black") 
+          {
             return (
-              <div
-                key={idx}
-                className={`grid-cell white ${highlightedCells.has(idx) ? "highlighted" : ""}`}
-                style={{ width: cellSize, height: cellSize }}
-              >
-                <input
-                  ref={(el) => { inputRefs.current[idx] = el; }}
-                  value={userInput[idx] ?? normalizedCell.value ?? ""}
-                  onChange={(e) => handleCellChange(idx, e.nativeEvent.data)}
-                  onKeyDown={(e) => handleCellKeyDown(idx, e)}
-                  onFocus={(e) => e.target.select()}
-                  onClick={() => handleCellClick(idx)}
-                  aria-label={`cell ${idx}`}
-                />
+              <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize, position: "relative" }}>
+                {/* each clue is a (description, slot number, direction) tuple */}
+                {normalizedCell.clue_vector?.map(([, number, direction], i) => (
+                  <Fragment key={i}>
+                    <ClueArrow direction={direction} cellSize={cellSize} />
+                    <ClueNumber number={number} direction={direction} cellSize={cellSize} />
+                  </Fragment>
+                ))}
               </div>
             );
-          })}
-        </div>
+          }
 
-        {slotEverSelected && (
-          <p className="grid-hint">
-            Press <kbd>space</kbd> to switch between the horizontal and vertical word through the current cell.
-          </p>
-        )}
+          return (
+            <div
+              key={idx}
+              className={`grid-cell white ${highlightedCells.has(idx) ? "highlighted" : ""}`}
+              style={{ width: cellSize, height: cellSize }}
+            >
+              <input
+                ref={(el) => { inputRefs.current[idx] = el; }}
+                value={userInput[idx] ?? normalizedCell.value ?? ""}
+                onChange={(e) => handleCellChange(idx, e.nativeEvent.data)}
+                onKeyDown={(e) => handleCellKeyDown(idx, e)}
+                onFocus={(e) => e.target.select()}
+                onClick={() => handleCellClick(idx)}
+                aria-label={`cell ${idx}`}
+              />
+            </div>
+          );
+        })}
+      </div>
 
-        <div className="grid-toolbar">
-          <button onClick={() => setUserInput({})}>Restart ↺</button>
-          <span>|</span>
-          <button>Export to PDF ↑</button>
-        </div>
+      <div className="grid-toolbar">
+        <button>
+          Export to PDF
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 9.5V1.5M7 1.5L4.25 4.25M7 1.5l2.75 2.75" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M1.75 9v2.25a1.25 1.25 0 0 0 1.25 1.25h8a1.25 1.25 0 0 0 1.25-1.25V9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        <button>Check answers</button>
       </div>
 
       {hasClues && (
         <aside className="clue-panel" style={{ height: Math.max(280, rows * cellSize) }}>
-          <ClueList title="Horizontal" clues={horizontalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
-          <ClueList title="Vertical" clues={verticalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
+          <h2 className="clue-panel-title">Clues</h2>
+
+          <ClueList title="Across" arrow="→" clues={horizontalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
+          <ClueList title="Down" arrow="↓" clues={verticalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
         </aside>
       )}
     </div>

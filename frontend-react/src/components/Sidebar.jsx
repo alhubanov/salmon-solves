@@ -2,8 +2,14 @@ import { useState } from "react";
 import logo from "../assets/logo.png";
 
 // All the settings that adapt per crossword type
-const TYPE_OPTIONS = ["Simple", "Scandi"];
-const PRESET_GRIDS = ["15x15", "21x21"];
+const TYPE_OPTIONS = [/* "Simple", */ "Scandi"];
+const PRESET_GRIDS = ["15x15"];
+
+// Custom sizes offered by the W/H pickers.
+const DIMENSIONS = Array.from({ length: 16 }, (_, i) => i + 3);
+
+/* Difficulty and themes are not ready yet — kept here for when they are.
+
 const DIFFICULTIES = ["Beginner", "Medium", "Expert"];
 const THEMES = [
   "Arts & culture",
@@ -18,8 +24,7 @@ const THEMES = [
   "Mixed",
 ];
 
-// Sizes offered by the W/H pickers when the grid is set to Custom.
-const DIMENSIONS = Array.from({ length: 27 }, (_, i) => i + 4);
+*/
 
 function PanelIcon() {
   return (
@@ -30,9 +35,9 @@ function PanelIcon() {
   );
 }
 
-export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sidebarOpen, onToggle })
+export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, onToggle })
 {
-  const { type, difficulty, grid, themes } = settings;
+  const { type, grid } = settings;
 
   // "Custom" cannot be read back off the grid string alone — 15x15 typed by hand looks exactly like
   // the preset — so the mode the user picked is tracked here.
@@ -41,12 +46,6 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sideb
   const dimensions = grid.match(/(\d+)x(\d+)/);
   const width = dimensions ? Number(dimensions[1]) : 15;
   const height = dimensions ? Number(dimensions[2]) : 15;
-
-  function toggleTheme(theme)
-  {
-    const already = themes.includes(theme);
-    onUpdate("themes", already ? themes.filter((t) => t !== theme) : [...themes, theme]);
-  }
 
   function selectGrid(value)
   {
@@ -59,9 +58,11 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sideb
   return (
     <div className="sidebar-inner">
       <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <img src={logo} alt="Crossy" />
-        </div>
+        {sidebarOpen && (
+          <div className="sidebar-logo">
+            <img src={logo} alt="Crossy" />
+          </div>
+        )}
 
         <button
           className="sidebar-toggle"
@@ -86,9 +87,9 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sideb
             </select>
           </div>
 
-          {/* Grid */}
+          {/* Size */}
           <div className="field-row">
-            <label className="field-label" htmlFor="grid-select">Grid</label>
+            <label className="field-label" htmlFor="grid-select">Size</label>
             <select
               id="grid-select"
               className="field-select"
@@ -126,12 +127,13 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sideb
             </div>
           )}
 
-          {/* Difficulty */}
+          {/* Difficulty and themes are hidden until those features are ready.
+
           <div className="diff-row">
             {DIFFICULTIES.map((d) => (
               <button
                 key={d}
-                className={`diff-btn diff-btn--${d.toLowerCase()} ${difficulty === d ? "active" : ""}`}
+                className={`diff-btn diff-btn--${d.toLowerCase()} ${settings.difficulty === d ? "active" : ""}`}
                 onClick={() => onUpdate("difficulty", d)}
               >
                 {d}
@@ -139,21 +141,28 @@ export default function Sidebar({ settings, onUpdate, onGenerate, onReset, sideb
             ))}
           </div>
 
-          {/* Theme */}
           <div className="field-group">
             <div className="field-label field-label--block">Theme (optional)</div>
             <div className="chip-grid">
               {THEMES.map((theme) => (
-                <button key={theme} className={`chip ${themes.includes(theme) ? "active" : ""}`} onClick={() => toggleTheme(theme)}>
+                <button
+                  key={theme}
+                  className={`chip ${settings.themes.includes(theme) ? "active" : ""}`}
+                  onClick={() => {
+                    const already = settings.themes.includes(theme);
+                    onUpdate("themes", already ? settings.themes.filter((t) => t !== theme) : [...settings.themes, theme]);
+                  }}
+                >
                   {theme}
                 </button>
               ))}
             </div>
           </div>
 
+          */}
+
           {/* Actions */}
           <button className="btn-generate" onClick={onGenerate}> Generate crossword → </button>
-          <button className="btn-reset" onClick={onReset}> Reset </button>
         </div>
       )}
     </div>

@@ -54,22 +54,15 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .sidebar--open  { width: 340px; }
-.sidebar--closed { width: 120px; }
+/* collapsed it holds nothing but the toggle: 20px padding + 30px button + 20px padding */
+.sidebar--closed { width: 70px; }
 
-/* collapsed the header has no room side by side, and the toggle must stay reachable */
-.sidebar--closed .sidebar-header {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.sidebar--closed .sidebar-logo { height: 26px; }
-
+/* min-height holds the toggle at the same level once the logo is dropped on collapse */
 .sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+  min-height: 34px;
   margin-bottom: 28px;
 }
 
@@ -90,6 +83,7 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: auto; /* stays right-aligned whether or not the logo is there */
   padding: 6px;
   border: none;
   border-radius: var(--radius-sm);
@@ -274,18 +268,26 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ── crossword grid ── */
+/* A grid rather than nested flex columns, so the clue panel can share the grid's row and line up
+   with the top of the board instead of with the hint sitting above it. */
 .grid-and-clues {
-  display: flex;
-  align-items: flex-start;
-  gap: 28px;
+  display: grid;
+  grid-template-columns: auto;
+  grid-template-rows: auto auto auto;   /* hint, board, toolbar */
+  justify-items: center;
+  align-items: start;
+  row-gap: 10px;
 }
 
-.grid-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
+.grid-and-clues--with-clues {
+  grid-template-columns: auto auto;
+  column-gap: 28px;
 }
+
+.grid-hint      { grid-column: 1; grid-row: 1; }
+.crossword-grid { grid-column: 1; grid-row: 2; }
+.grid-toolbar   { grid-column: 1; grid-row: 3; }
+.clue-panel     { grid-column: 2; grid-row: 2; }
 
 .crossword-grid {
   border: 2px solid var(--text-primary);
@@ -334,13 +336,23 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ── clue lists ── */
-/* The panel is pinned to the grid's pixel height so the two lists split it evenly and each
-   scrolls on its own instead of growing the page. */
+/* The panel is pinned to the grid's pixel height so the two lists split what is left under the
+   heading and each scrolls on its own instead of growing the page. */
 .clue-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: 280px;
+  width: 300px;
+  flex-shrink: 0;
+  padding: 22px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.clue-panel-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 22px;
   flex-shrink: 0;
 }
 
@@ -349,33 +361,25 @@ button { font-family: inherit; cursor: pointer; }
   flex-direction: column;
   flex: 1;
   min-height: 0;            /* lets the <ol> scroll instead of stretching the panel */
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
 }
+
+.clue-list + .clue-list { margin-top: 20px; }
 
 .clue-list h3 {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   flex-shrink: 0;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-.clue-list-count {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--text-hint);
-  font-variant-numeric: tabular-nums;
+.clue-list-arrow {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .clue-list ol {
@@ -383,42 +387,39 @@ button { font-family: inherit; cursor: pointer; }
   min-height: 0;
   overflow-y: auto;
   list-style: none;
-  padding: 6px 0;
+  padding: 10px 0 4px;
 }
 
 .clue-list li { display: flex; }
 
 .clue-row {
   display: flex;
-  gap: 10px;
+  gap: 7px;
   flex: 1;
   width: 100%;
-  padding: 4px 14px;
+  padding: 7px 8px;
   border: none;
+  border-radius: var(--radius-sm);
   background: none;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
   text-align: left;
   transition: background 0.12s;
 }
 
 .clue-row:hover { background: var(--bg); }
 .clue-row.selected { background: var(--slot-highlight-row); }
-.clue-row.selected .clue-list-number { color: var(--text-primary); }
 
 .clue-list-number {
   flex-shrink: 0;
-  min-width: 2.5ch;
-  text-align: right;
-  font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-variant-numeric: tabular-nums;
 }
 
 .clue-list-text { color: var(--text-primary); }
 
 .clue-list-empty {
-  padding: 12px 14px;
+  padding: 12px 8px;
   font-size: 13px;
   color: var(--text-hint);
 }
@@ -427,10 +428,12 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: -8px;
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+/* keeps its space in the layout so the grid stays put when the hint is revealed */
+.grid-hint--hidden { visibility: hidden; }
 
 .grid-hint kbd {
   padding: 1px 7px;
@@ -445,22 +448,28 @@ button { font-family: inherit; cursor: pointer; }
 
 .grid-toolbar {
   display: flex;
-  gap: 12px;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 2px;
+  background: none;
+  border: none;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
+/* no fill in either state — hover reads as an underline instead */
 .grid-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  border: none;
   background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 5px 10px;
-  font-size: 16px;
-  color: var(--text-secondary);
-  transition: background 0.12s;
+  font-size: 13px;
+  color: var(--text-primary);
 }
-.grid-toolbar button:hover { background: var(--surface); }
+.grid-toolbar button:hover { text-decoration: underline; }
 
 .empty-state {
   text-align: center;

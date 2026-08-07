@@ -5,8 +5,8 @@ import "./App.css";
 import init from "../../pkg/crossy"
 
 const DEFAULT_SETTINGS = {
-  type: "Simple",
-  difficulty: "Beginner",
+  type: "Scandi", // "Simple" is not selectable yet
+  difficulty: "Beginner", // fixed while the difficulty picker is hidden
   grid: "15x15",
   themes: [], // empty = random
 };
@@ -40,12 +40,6 @@ export default function App()
     setGenerated(true);
   }
 
-  function handleReset() 
-  {
-    setSettings(DEFAULT_SETTINGS);
-    setGenerated(false);
-  }
-
   return (
     <div className="app-layout">
       <div className="app-body">
@@ -54,7 +48,6 @@ export default function App()
             settings={settings}
             onUpdate={updateSetting}
             onGenerate={handleGenerate}
-            onReset={handleReset}
             sidebarOpen={sidebarOpen}
             onToggle={() => setSidebarOpen((o) => !o)}
           />
