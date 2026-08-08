@@ -473,6 +473,43 @@ button { font-family: inherit; cursor: pointer; }
 }
 .grid-toolbar button:hover { text-decoration: underline; }
 
+/* ── solved celebration ── */
+/* Fixed to the viewport so the shade covers the whole screen, not just the board. The 1.5s here
+   matches SOLVED_BANNER_MS, which is what unmounts it. */
+.solved-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(18, 18, 16, 0.58);
+  animation: solved-shade 1.5s ease both;
+}
+
+.solved-message {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+  animation: solved-pop 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes solved-shade {
+  0%   { opacity: 0; }
+  12%  { opacity: 1; }
+  74%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes solved-pop {
+  0%   { opacity: 0; transform: scale(0.88); }
+  16%  { opacity: 1; transform: scale(1); }
+  74%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.04); }
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;

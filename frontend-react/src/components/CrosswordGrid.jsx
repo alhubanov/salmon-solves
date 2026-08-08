@@ -15,6 +15,9 @@ function parseGrid(gridStr)
 const HORIZONTAL_DIRECTIONS = ["Right", "RightOnBottomSide"];
 const VERTICAL_DIRECTIONS = ["Down", "DownOnRightSide"];
 
+// Kept in step with the solved-overlay animation in App.css.
+const SOLVED_BANNER_MS = 1500;
+
 // The generator's Theme enum only knows these five. Chips outside it are offered in the sidebar but
 // have no counterpart yet, so they are dropped here — passing one through fails the whole call with
 // "unknown variant" and no grid comes back.
@@ -89,6 +92,8 @@ export default function CrosswordGrid({ settings, generateRequest })
   const [slotEverSelected, setSlotEverSelected] = useState(false);
   // { correct: Set, incorrect: Set } of cell indices while a check is on screen, else null.
   const [checkResults, setCheckResults] = useState(null);
+  const [solved, setSolved] = useState(false);
+  const solvedTimer = useRef(null);
 
   // Flat cell index → the <input> element, so selecting a clue can move focus into the grid.
   const inputRefs = useRef({});
@@ -275,6 +280,8 @@ export default function CrosswordGrid({ settings, generateRequest })
     });
 
     setCheckResults({ correct, incorrect });
+
+    if (correct.size > 0 && incorrect.size === 0) celebrateSolved();
   }
 
   // Hands the printer a plain description of what is on screen right now — letters as the user has
@@ -297,12 +304,27 @@ export default function CrosswordGrid({ settings, generateRequest })
     exportCrosswordPdf({ cols, rows, board, horizontalClues, verticalClues });
   }
 
-  // Any move back into the grid drops the check colouring. Returning the previous state unchanged
-  // when there is nothing to clear lets React skip the re-render.
+  // Any move back into the grid drops the check colouring and the banner. Returning the previous
+  // state unchanged when there is nothing to clear lets React skip the re-render.
   function clearCheck()
   {
     setCheckResults((previous) => (previous === null ? previous : null));
+    setSolved((previous) => (previous ? false : previous));
   }
+
+  // Shown only when the whole board is right. It clears itself, so the celebration stays brief.
+  function celebrateSolved()
+  {
+    setSolved(true);
+
+    if (solvedTimer.current !== null) clearTimeout(solvedTimer.current);
+    solvedTimer.current = setTimeout(() => setSolved(false), SOLVED_BANNER_MS);
+  }
+
+  useEffect(() => () =>
+  {
+    if (solvedTimer.current !== null) clearTimeout(solvedTimer.current);
+  }, []);
 
   // Arrows along the slot's own axis walk the caret through it; arrows across the axis jump to the
   // neighbouring slot of the same axis, so up/down on a horizontal word moves between horizontal
@@ -609,6 +631,13 @@ export default function CrosswordGrid({ settings, generateRequest })
 
   return (
     <div className={`grid-and-clues ${hasClues ? "grid-and-clues--with-clues" : ""}`}>
+      {/* pointer-events stay off, so the shade never swallows a click on its way out */}
+      {solved && (
+        <div className="solved-overlay" role="status">
+          <p className="solved-message">Crossword solved!</p>
+        </div>
+      )}
+
       {/* always rendered, only made invisible, so revealing it does not shift the grid */}
       <p className={`grid-hint ${slotEverSelected ? "" : "grid-hint--hidden"}`}>
         Press <kbd>space</kbd> to switch between the horizontal and vertical word through the current cell.
