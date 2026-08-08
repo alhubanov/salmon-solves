@@ -15,7 +15,9 @@ export default function App()
 {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [generated, setGenerated] = useState(false);
+  // A counter rather than a flag: each press is a fresh request, so pressing Generate again with
+  // the same settings still rebuilds, while editing settings on its own does nothing.
+  const [generateRequest, setGenerateRequest] = useState(0);
   const [wasmReady, setWasmReady] = useState(false);
 
   useEffect(() => 
@@ -34,10 +36,10 @@ export default function App()
     setSettings((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleGenerate() 
+  function handleGenerate()
   {
     if (!wasmReady) return;
-    setGenerated(true);
+    setGenerateRequest((request) => request + 1);
   }
 
   return (
@@ -54,7 +56,7 @@ export default function App()
         </aside>
 
         <main className="main-area">
-          <CrosswordGrid settings={settings} generated={generated} />
+          <CrosswordGrid settings={settings} generateRequest={generateRequest} />
         </main>
       </div>
     </div>

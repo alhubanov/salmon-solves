@@ -69,10 +69,18 @@ function ClueList({ title, arrow, clues, selectedSlotId, selectionTick, onSelect
   );
 }
 
-export default function CrosswordGrid({ settings, generated }) 
+export default function CrosswordGrid({ settings, generateRequest })
 {
-  const { cols, rows } = parseGrid(settings.grid);
-  const [cells, setCells] = useState([]);
+  // The board keeps the settings it was built from. Rendering off those rather than the live
+  // sidebar values is what lets settings be edited without the puzzle on screen changing under it.
+  const [board, setBoard] = useState({ cells: [], cols: 15, rows: 15, gridType: "Scandi" });
+  const { cells, cols, rows, gridType } = board;
+
+  // Derived rather than its own flag: the spinner is then part of the very render the click causes,
+  // so it is committed before the effect below runs. Setting a flag inside that effect instead let
+  // a fast run flip it true and false within one render, and the spinner never reached the DOM.
+  const [completedRequest, setCompletedRequest] = useState(0);
+  const generating = generateRequest > completedRequest;
   const [userInput, setUserInput] = useState({});
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   // Bumped on every selection, so picking the already-selected slot still counts as an event.
@@ -81,7 +89,6 @@ export default function CrosswordGrid({ settings, generated })
   const [slotEverSelected, setSlotEverSelected] = useState(false);
   // { correct: Set, incorrect: Set } of cell indices while a check is on screen, else null.
   const [checkResults, setCheckResults] = useState(null);
-  const gridType = settings.type;
 
   // Flat cell index → the <input> element, so selecting a clue can move focus into the grid.
   const inputRefs = useRef({});
@@ -380,28 +387,63 @@ export default function CrosswordGrid({ settings, generated })
     focusCell(selectedSlotCells[position + 1]);
   }
 
-  useEffect(() => 
+  // Keyed on the request counter alone: settings are read when a run starts, never listened to, so
+  // editing the sidebar leaves the board that is already on screen untouched until Generate.
+  useEffect(() =>
   {
-    if (generated) 
-    {
-      // TODO: incorporate all settings properly
-      let partial_settings = 
-      {
-        grid_type: settings.type,
-        difficulty_level: settings.difficulty,
-        themes: settings.themes.map((theme) => BACKEND_THEMES[theme]).filter(Boolean)
-      }
+    if (!generating) return;
 
-      const grid = build_crossword_grid(cols, rows, partial_settings);
-      // TODO: don't flatten
-      setCells(grid.layout.flat());
-      setUserInput({});
-      setSelectedSlotId(null);
-      setSlotEverSelected(false);
-      setCheckResults(null);
-      inputRefs.current = {};
-    }
-  }, [generated, settings.grid, settings.type]);
+    // build_crossword_grid is synchronous wasm: once it starts, nothing else — including painting —
+    // happens until it returns. Two nested frames are what makes the spinner visible. The first
+    // callback runs before the pending frame is painted, the second only after that paint has gone
+    // out, so by the time the work starts the spinner is genuinely on screen. A single frame, or a
+    // frame plus a timeout, both start the work before that paint and the spinner never appears.
+    let secondFrame = null;
+    const firstFrame = requestAnimationFrame(() =>
+    {
+      secondFrame = requestAnimationFrame(() =>
+      {
+        const { cols: requestedCols, rows: requestedRows } = parseGrid(settings.grid);
+
+        // TODO: incorporate all settings properly
+        let partial_settings =
+        {
+          grid_type: settings.type,
+          difficulty_level: settings.difficulty,
+          themes: settings.themes.map((theme) => BACKEND_THEMES[theme]).filter(Boolean)
+        }
+
+        try
+        {
+          const grid = build_crossword_grid(requestedCols, requestedRows, partial_settings);
+          // TODO: don't flatten
+          setBoard({
+            cells: grid.layout.flat(),
+            cols: requestedCols,
+            rows: requestedRows,
+            gridType: settings.type,
+          });
+          setUserInput({});
+          setSelectedSlotId(null);
+          setSlotEverSelected(false);
+          setCheckResults(null);
+          inputRefs.current = {};
+        }
+        finally
+        {
+          setCompletedRequest(generateRequest);
+        }
+      });
+    });
+
+    return () =>
+    {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) cancelAnimationFrame(secondFrame);
+    };
+    // settings are deliberately not dependencies — reacting to them is the reload bug this avoids
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generating, generateRequest]);
 
   // A slot that gets backtracked and re-placed during generation has its clue appended to the
   // cell more than once, so the same (number, direction) pair can arrive repeated. Drawing it
@@ -540,7 +582,16 @@ export default function CrosswordGrid({ settings, generated })
     }
   }
 
-  if (!generated || cells.length === 0) {
+  if (generating) {
+    return (
+      <div className="empty-state">
+        <div className="spinner" role="status" aria-label="Generating crossword" />
+        <p style={{ fontSize: "20px", marginTop: "18px" }}>Generating…</p>
+      </div>
+    );
+  }
+
+  if (cells.length === 0) {
     return (
       <div className="empty-state">
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
