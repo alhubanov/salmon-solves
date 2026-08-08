@@ -467,21 +467,23 @@ export default function CrosswordGrid({ settings, generateRequest })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generating, generateRequest]);
 
-  // A slot that gets backtracked and re-placed during generation has its clue appended to the
-  // cell more than once, so the same (number, direction) pair can arrive repeated. Drawing it
-  // twice stacks identical text and makes that number look bolder, so collapse them here.
+  // A slot that gets backtracked and re-placed during generation has its clue appended to the cell
+  // again rather than replaced, so the same (number, direction) pair can arrive several times —
+  // once per word that has occupied the slot. The last one is the word actually left in the grid;
+  // the earlier ones describe words that were discarded. Keeping the latest is what stops a slot
+  // showing the clue of a word it no longer holds. The Map preserves the order keys first appear,
+  // so the arrows on a clue square keep their positions.
   function dedupeClues(clue_vector)
   {
-    const seen = new Set();
+    const latestByKey = new Map();
 
-    return clue_vector.filter(([, number, direction]) =>
+    for (const clue of clue_vector)
     {
-      const key = `${number}:${direction}`;
-      if (seen.has(key)) return false;
+      const [, number, direction] = clue;
+      latestByKey.set(`${number}:${direction}`, clue);
+    }
 
-      seen.add(key);
-      return true;
-    });
+    return [...latestByKey.values()];
   }
 
   function normalizeCell(cell, gridType)

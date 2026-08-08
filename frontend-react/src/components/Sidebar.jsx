@@ -5,8 +5,8 @@ import logo from "../assets/logo.png";
 const TYPE_OPTIONS = [/* "Simple", */ "Scandi"];
 const PRESET_GRIDS = ["15x15"];
 
-// Custom sizes offered by the W/H pickers.
-const DIMENSIONS = Array.from({ length: 16 }, (_, i) => i + 3);
+// Custom sizes offered by the W/H pickers: 3 to 16.
+const DIMENSIONS = Array.from({ length: 14 }, (_, i) => i + 3);
 
 /* Difficulty and themes are not ready yet — kept here for when they are.
 
@@ -163,6 +163,13 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
 
           {/* Actions */}
           <button className="btn-generate" onClick={onGenerate}> Generate crossword → </button>
+
+          <p className="sidebar-credit">
+            Clues compiled from{" "}
+            <a href="https://en-word.net/" target="_blank" rel="noreferrer">Open English WordNet</a>,
+            licensed under{" "}
+            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
+          </p>
         </div>
       )}
     </div>

@@ -235,13 +235,13 @@ impl GridCell {
         };
     }
 
-    pub fn append_clue(&mut self, slot_id: u32, slot_direction: SlotDirection) -> ()
+    pub fn append_clue(&mut self, slot_id: u32, slot_direction: SlotDirection, clue: String) -> ()
     {
         match &mut self.cell
         {
             Some(CellType::Clue(clue_vec)) => 
             {
-                clue_vec.push(("description".to_string(), slot_id, slot_direction));
+                clue_vec.push((clue, slot_id, slot_direction));
             },
             Some(CellType::Letter(_, _)) => panic!("Associated clue cell is a letter."),
             None => panic!("Already exhausted possibility.")

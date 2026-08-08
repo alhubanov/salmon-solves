@@ -209,7 +209,7 @@ impl Slot {
         candidates
     }
 
-    pub fn nominate_word(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<String, LayoutError> 
+    pub fn nominate_word_and_clue(&mut self, already_attempted_words: &AHashSet<String>, rng: &mut dyn Rng) -> Result<(String, String), LayoutError> 
     {   
         let word_len = self.slot_cells.len();
         let pattern = self.get_current_pattern();
@@ -217,7 +217,7 @@ impl Slot {
         let borrowed_dictionary = self.dictionary.borrow_mut();
         let suitable_candidates = borrowed_dictionary.get_candidates(word_len, &pattern);
 
-        let mut filtered_suitable_candidates: Vec<&SlotCandidate> = suitable_candidates
+        let filtered_suitable_candidates: Vec<&SlotCandidate> = suitable_candidates
             .into_iter()
             .filter(|candidate| 
                         candidate.get_assigned_slot_id() == None &&
@@ -228,22 +228,23 @@ impl Slot {
 
         if filtered_suitable_candidates.is_empty() { return Err(LayoutError::NoPossibleDomain); }
         
-        filtered_suitable_candidates.sort();
+        // filtered_suitable_candidates.sort();
         let idx = rng.random_range(0..filtered_suitable_candidates.len());
         let sampled_word = filtered_suitable_candidates[idx].get_word().clone();
+        let sampled_clue = filtered_suitable_candidates[idx].get_clue().clone();
 
-        return Ok(sampled_word);
+        return Ok((sampled_word, sampled_clue));
     }
 
-    fn assign_associated_gridcell(&mut self) -> ()
+    fn assign_associated_gridcell(&mut self, clue: String) -> ()
     {
         let mut clue_vec = Vec::new();
-        clue_vec.push(("description".to_string(), self.slot_id, self.slot_direction));
+        clue_vec.push((clue, self.slot_id, self.slot_direction));
 
         self.associated_clue_cell.borrow_mut().cell = Some(CellType::Clue(clue_vec));
     }
 
-    pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word: String, placement_order: usize) -> () 
+    pub fn place_nominated_word_and_associated_clue(&mut self, nominated_word_and_clue: (String, String), placement_order: usize) -> () 
     {   
         {
             let mut dictionary = self.dictionary.borrow_mut();
@@ -252,7 +253,7 @@ impl Slot {
             if let Some(candidate) = dictionary
                                         .get_words_for_length_mut(self.slot_cells.len())
                                         .iter_mut()
-                                        .find(|candidate| candidate.get_word() == &nominated_word)
+                                        .find(|candidate| candidate.get_word() == &nominated_word_and_clue.0)
             {
                 candidate.set_assigned_slot_id(self.slot_id);
             }
@@ -264,20 +265,21 @@ impl Slot {
         {
             if gridcell.borrow().has_no_letter_assigned() 
             {
-                gridcell.borrow_mut().assign_letter(nominated_word.chars().nth(idx).unwrap());
+                gridcell.borrow_mut().assign_letter(nominated_word_and_clue.0.chars().nth(idx).unwrap());
             }
         }
 
+        let clue = nominated_word_and_clue.1;
         if self.associated_clue_cell.borrow_mut().cell.is_none()
         {
-            self.assign_associated_gridcell();
+            self.assign_associated_gridcell(clue);
         }
         else // this assumes that associated clue cell cannot possibly be a letter
         {
-            self.associated_clue_cell.borrow_mut().append_clue(self.slot_id, self.slot_direction);
+            self.associated_clue_cell.borrow_mut().append_clue(self.slot_id, self.slot_direction, clue);
         }
 
-        self.selected_word = Some(nominated_word);
+        self.selected_word = Some(nominated_word_and_clue.0);
         self.placement_order = Some(placement_order);
     }
 

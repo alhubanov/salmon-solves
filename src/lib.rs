@@ -45,7 +45,7 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, 
     let mut run_stats = RunStats::new();
 
     // Should the rng be different for each attempt?
-    for _ in 0..10 
+    for _ in 0..40 
     {
         // println!("Attempt {}...", idx + 1);
         grid = T::initialize(width, height);
@@ -79,7 +79,7 @@ pub fn build_crossword_grid(width: u32, height: u32, settings: JsValue) -> Resul
     let mut run_stats = RunStats::new();
     
     // Should the rng be the same for all attempts?
-    for _ in 0..10 
+    for _ in 0..40 
     {
         grid = GenericGrid::initialize(settings.get_grid_type(), width, height);
         if let Ok(_) = grid.construct(&mut rng, max_depth, &mut run_stats) 

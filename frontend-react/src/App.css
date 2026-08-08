@@ -246,6 +246,19 @@ button { font-family: inherit; cursor: pointer; }
 }
 .btn-generate:hover { opacity: 0.88; }
 
+.sidebar-credit {
+  margin-top: 18px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-hint);
+}
+
+.sidebar-credit a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+.sidebar-credit a:hover { color: var(--text-primary); }
+
 .btn-reset {
   width: 100%;
   padding: 10px;
@@ -343,9 +356,11 @@ button { font-family: inherit; cursor: pointer; }
 .clue-panel {
   display: flex;
   flex-direction: column;
-  width: 300px;
+  /* Wide enough that a long WordNet definition wraps to a couple of lines rather than a stack,
+     but it gives width back on narrow screens instead of pushing the board off-screen. */
+  width: clamp(300px, 26vw, 400px);
   flex-shrink: 0;
-  padding: 22px 24px;
+  padding: 22px 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -399,7 +414,7 @@ button { font-family: inherit; cursor: pointer; }
   gap: 7px;
   flex: 1;
   width: 100%;
-  padding: 7px 8px;
+  padding: 7px 6px;
   border: none;
   border-radius: var(--radius-sm);
   background: none;

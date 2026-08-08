@@ -8,7 +8,7 @@ fn char_to_idx(c: char) -> Option<usize>
 {
     match c 
     {
-        'a'..='z' => Some(c as usize - 'a' as usize),
+        'A'..='Z' => Some(c as usize - 'A' as usize),
         _ => None,
     }
 }
@@ -87,12 +87,10 @@ impl Dictionary
 
         for line in words_file_content.lines() 
         {
-            let word = line.trim();
-            if word.is_empty() 
-            { 
-                continue; 
+            if let Some((ans, clue)) = line.split_once('\t')
+            {
+                words_per_length.entry(ans.len()).or_default().push(SlotCandidate::new(ans.to_string(), clue.to_string()));
             }
-            words_per_length.entry(word.len()).or_default().push(SlotCandidate::new(word.to_string()));
         }
 
         let words_per_length = words_per_length

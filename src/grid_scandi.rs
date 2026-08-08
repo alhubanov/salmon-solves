@@ -38,7 +38,7 @@ mod constants {
     pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
 }
 
-static WORDS: &str = include_str!("../word_files/common_english_words.txt");
+static WORDS: &str = include_str!("../word_files/oewn-answer-clue-deduped.tsv");
 
 pub struct ScandiGrid {
     width: u32,
@@ -47,13 +47,15 @@ pub struct ScandiGrid {
     clues_placed: u32,
     num_cells_accessed: u32,
     word_slots: Vec<Slot>,
-    slot_id_pos_map: AHashMap<u32, u32>
+    slot_id_pos_map: AHashMap<u32, u32>,
+    dictionary: Rc<RefCell<Dictionary>>
 }
 
 impl Grid for ScandiGrid {
     fn initialize(width: u32, height: u32) -> Self 
     {
         let mut layout : Vec<Vec<Rc<RefCell<GridCell>>>> = Vec::new();
+        let dictionary = Rc::new(RefCell::new(Dictionary::build(WORDS)));
 
         for row_idx in 0..height {
             layout.push(Vec::new());
@@ -70,14 +72,12 @@ impl Grid for ScandiGrid {
         let word_slots = Vec::new();
         let slot_id_pos_map = AHashMap::new();
 
-        Self { width, height, layout, clues_placed, num_cells_accessed, word_slots, slot_id_pos_map }
+        Self { width, height, layout, clues_placed, num_cells_accessed, word_slots, slot_id_pos_map, dictionary }
     }
 
     fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32, run_stats: &mut RunStats) -> Result<(), LayoutError> 
     {
-        let dictionary = Rc::new(RefCell::new(Dictionary::build(WORDS)));
-
-        self.create_all_slots(&dictionary, rng);
+        self.create_all_slots(rng);
         self.fill_grid(rng, max_depth, run_stats)?;
 
         Ok(())
@@ -203,7 +203,6 @@ impl ScandiGrid {
                     vertical_idx: u32, 
                     horizontal_idx: u32, 
                     slot_id: &mut u32, 
-                    dictionary: &Rc<RefCell<Dictionary>>,
                     encountered_clue_cell: bool,
                     orientation: &str)  
     {
@@ -218,12 +217,12 @@ impl ScandiGrid {
         
         if word_length == 0 { return; }
 
-        if !dictionary.borrow().get_words().contains_key(&(word_length as usize)) {
+        if !self.dictionary.borrow().get_words().contains_key(&(word_length as usize)) {
             // TODO: backtrack here instead of panicking
             panic!("Cannot fill slot at all.");
         }
 
-        let available_candidates = Rc::clone(dictionary);
+        let available_candidates = Rc::clone(&self.dictionary);
         let slot = Slot::new(
                     *slot_id,
                     slot_direction,
@@ -236,7 +235,7 @@ impl ScandiGrid {
         *slot_id += 1;
     }
 
-    fn create_all_slots(&mut self, dictionary: &Rc<RefCell<Dictionary>>, rng: &mut dyn Rng) -> () 
+    fn create_all_slots(&mut self, rng: &mut dyn Rng) -> () 
     {
         let mut slot_id : u32 = 0;
         for vertical_idx in 0..self.height 
@@ -259,12 +258,12 @@ impl ScandiGrid {
                 {
                     if encountered_clue_cell || at_end_of_height 
                     {
-                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, dictionary, encountered_clue_cell, "vertical");
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, encountered_clue_cell, "vertical");
                     }
 
                     if encountered_clue_cell || at_end_of_width 
                     {
-                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, dictionary, encountered_clue_cell, "horizontal");
+                        self.create_slot(vertical_idx, horizontal_idx, &mut slot_id, encountered_clue_cell, "horizontal");
                     }
                 }
             }
@@ -331,21 +330,21 @@ impl ScandiGrid {
 
         'selections: loop 
         {
-            let nominated_word = match self.get_slot_mut(slot_id).nominate_word(&already_attempted_words, rng) 
+            let nominated_word_and_clue = match self.get_slot_mut(slot_id).nominate_word_and_clue(&already_attempted_words, rng) 
             {
                 Ok(word) => word,
                 Err(_) => return Err(slot_crossing_ids)
             };
 
             let mut domain = AHashSet::new();
-            domain.insert(nominated_word.clone());
+            domain.insert(nominated_word_and_clue.0.clone());
             if !self.propagate_changes_across_crossing_slots(slot_id, domain, max_depth)
             {
-                already_attempted_words.insert(nominated_word.clone());
+                already_attempted_words.insert(nominated_word_and_clue.0.clone());
                 continue 'selections;
             }
 
-            self.get_slot_mut(slot_id).place_nominated_word_and_associated_clue(nominated_word.clone(), placement_order.clone());
+            self.get_slot_mut(slot_id).place_nominated_word_and_associated_clue(nominated_word_and_clue.clone(), placement_order.clone());
             self.invalidate_slot_and_crossings(slot_id);
             *placement_order += 1;
 

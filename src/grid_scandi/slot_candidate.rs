@@ -1,19 +1,26 @@
 #[derive(PartialEq, Eq, Debug, Hash, PartialOrd, Ord)]
-pub struct SlotCandidate {
+pub struct SlotCandidate 
+{
     word: String,
+    description: String,
     assigned_slot_id: Option<u32>
 }
 
 impl SlotCandidate {
 
-    pub fn new(word: String) -> Self 
+    pub fn new(word: String, description: String) -> Self 
     {
-        Self { word, assigned_slot_id: None }
+        Self { word, description, assigned_slot_id: None }
     }
     
     pub fn get_word(&self) -> &String 
     {
         &self.word
+    }
+
+    pub fn get_clue(&self) -> &String 
+    {
+        &self.description
     }
 
     pub fn get_assigned_slot_id(&self) -> Option<u32> 
