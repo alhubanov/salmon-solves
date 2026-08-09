@@ -44,8 +44,8 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, 
 
     let max_depth = 
         if width < 9 || height < 9 { 1 } 
-        else if width <= 12 && height <= 12 { 2 }
-        else if width <= 18 && height <= 18 { 3 }
+        else if width <= 14 && height <= 14 { 2 }
+        else if width <= 20 && height <= 20 { 3 }
         else { 4 };
     
     let mut grid = T::initialize(width, height, Rc::clone(&dictionary));
