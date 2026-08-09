@@ -20,13 +20,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # pkg/ is gitignored by wasm-pack, so the wasm has to be built here — a fresh clone has none.
       # The word list is baked into the binary with include_str!, so this also has to rerun whenever
       # the word list changes, not only when the Rust does.
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -44,7 +44,7 @@ jobs:
       - name: Build wasm
         run: wasm-pack build --target web
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -54,21 +54,25 @@ jobs:
         working-directory: frontend-react
         run: npm ci
 
+      # Runs before the frontend build so its base_path output can feed the build below.
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
       - name: Build frontend
         working-directory: frontend-react
-        # Serving from a custom domain? Leave BASE_PATH unset.
-        # Serving from https://<user>.github.io/salmon-solves/? Set BASE_PATH: /salmon-solves/
+        # Taken from the live Pages config rather than hardcoded, so it stays right either way:
+        # "/salmon-solves" for the default project URL, "" for a custom domain (vite.config.js
+        # turns the empty value into "/"). Getting this wrong 404s every asset on the site.
         env:
-          BASE_PATH: ${{ vars.BASE_PATH }}
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
         run: npm run build
 
       # Stops GitHub running the output through Jekyll, which would drop files beginning with "_".
       - name: Add .nojekyll
         run: touch frontend-react/dist/.nojekyll
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: frontend-react/dist
 
@@ -80,4 +84,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
