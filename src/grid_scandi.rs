@@ -38,7 +38,7 @@ mod constants {
     pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
 }
 
-static WORDS: &str = include_str!("../word_files/oewn-answer-clue-deduped-nocap.tsv");
+static WORDS: &str = include_str!("../word_files/oewn-answer-clue-deduped-clean.tsv");
 
 pub struct ScandiGrid {
     width: u32,
