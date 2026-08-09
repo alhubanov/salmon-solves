@@ -3,10 +3,10 @@ import logo from "../assets/logo.png";
 
 // All the settings that adapt per crossword type
 const TYPE_OPTIONS = [/* "Simple", */ "Scandi"];
-const PRESET_GRIDS = ["15x15"];
+const PRESET_GRIDS = ["14x14"];
 
-// Custom sizes offered by the W/H pickers: 3 to 16.
-const DIMENSIONS = Array.from({ length: 14 }, (_, i) => i + 3);
+// Custom sizes offered by the W/H pickers: 3 to 14.
+const DIMENSIONS = Array.from({ length: 12 }, (_, i) => i + 3);
 
 /* Difficulty and themes are not ready yet — kept here for when they are.
 

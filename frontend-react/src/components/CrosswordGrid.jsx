@@ -2,11 +2,11 @@ import { Fragment, useState, useEffect, useMemo, useRef, useCallback } from "rea
 import { build_crossword_grid } from "../../../pkg/crossy";
 import { exportCrosswordPdf } from "../exportPdf";
 
-// Parse "15x15" → { cols: 15, rows: 15 }
+// Parse "14x14" → { cols: 14, rows: 14 }
 function parseGrid(gridStr)
 {
   const match = gridStr.match(/(\d+)x(\d+)/);
-  if (!match) return { cols: 15, rows: 15 };
+  if (!match) return { cols: 14, rows: 14 };
   return { cols: parseInt(match[1]), rows: parseInt(match[2]) };
 }
 
@@ -76,7 +76,7 @@ export default function CrosswordGrid({ settings, generateRequest })
 {
   // The board keeps the settings it was built from. Rendering off those rather than the live
   // sidebar values is what lets settings be edited without the puzzle on screen changing under it.
-  const [board, setBoard] = useState({ cells: [], cols: 15, rows: 15, gridType: "Scandi" });
+  const [board, setBoard] = useState({ cells: [], cols: 14, rows: 14, gridType: "Scandi" });
   const { cells, cols, rows, gridType } = board;
 
   // Derived rather than its own flag: the spinner is then part of the very render the click causes,

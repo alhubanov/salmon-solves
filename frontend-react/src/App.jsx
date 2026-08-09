@@ -7,7 +7,7 @@ import init from "../../pkg/crossy"
 const DEFAULT_SETTINGS = {
   type: "Scandi", // "Simple" is not selectable yet
   difficulty: "Beginner", // fixed while the difficulty picker is hidden
-  grid: "15x15",
+  grid: "14x14",
   themes: [], // empty = random
 };
 
