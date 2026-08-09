@@ -182,6 +182,16 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
               so the wording may differ from the original.
             </p>
           </section>
+
+          <section className="sidebar-legal">
+            <h3>Source code</h3>
+
+            <p>
+              Salmon Solves is a public project. If you are interested in how it works, the full
+              source code is on{" "}
+              <a href="https://github.com/alhubanov/salmon-solves" target="_blank" rel="noreferrer">GitHub</a>.
+            </p>
+          </section>
         </div>
       )}
     </div>
