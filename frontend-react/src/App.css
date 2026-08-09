@@ -253,27 +253,29 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .sidebar-legal h3 {
-  margin-bottom: 7px;
-  font-size: 11px;
+  margin-bottom: 8px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-secondary);
 }
 
+/* --text-hint sits at about 2:1 against the sidebar, which is why this read as unreadable
+   fine print; --text-secondary clears the 4.5:1 the size alone would not fix. */
 .sidebar-legal p {
-  font-size: 11px;
-  line-height: 1.55;
-  color: var(--text-hint);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
 }
 
-.sidebar-legal p + p { margin-top: 7px; }
+.sidebar-legal p + p { margin-top: 9px; }
 
 .sidebar-legal a {
-  color: var(--text-secondary);
+  color: var(--text-primary);
   text-decoration: underline;
 }
-.sidebar-legal a:hover { color: var(--text-primary); }
+.sidebar-legal a:hover { color: var(--accent-dark); }
 
 .btn-reset {
   width: 100%;
