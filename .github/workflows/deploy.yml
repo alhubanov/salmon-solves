@@ -1,0 +1,83 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# GITHUB_TOKEN needs these for the Pages deployment to be allowed.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it half way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pkg/ is gitignored by wasm-pack, so the wasm has to be built here — a fresh clone has none.
+      # The word list is baked into the binary with include_str!, so this also has to rerun whenever
+      # the word list changes, not only when the Rust does.
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      # Rust is preinstalled on the ubuntu runners, so only wasm-pack is missing. The installer
+      # script drops in a prebuilt binary; `cargo install wasm-pack` would compile it from source
+      # and add minutes to every run.
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build wasm
+        run: wasm-pack build --target web
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-react/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend-react
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend-react
+        # Serving from a custom domain? Leave BASE_PATH unset.
+        # Serving from https://<user>.github.io/salmon-solves/? Set BASE_PATH: /salmon-solves/
+        env:
+          BASE_PATH: ${{ vars.BASE_PATH }}
+        run: npm run build
+
+      # Stops GitHub running the output through Jekyll, which would drop files beginning with "_".
+      - name: Add .nojekyll
+        run: touch frontend-react/dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend-react/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
