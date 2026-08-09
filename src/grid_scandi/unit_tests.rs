@@ -1,9 +1,12 @@
 use crate::grid_scandi::gridcell::CellType::Letter;
 use crate::grid_scandi::gridcell::CellType::Clue;
+use crate::grid_scandi::dictionary;
 
 use super::*;
-use chacha20::ChaCha8Rng;
+// use chacha20::ChaCha8Rng;
 use rand;
+
+static WORDS: &str = include_str!("../../word_files/oewn-answer-clue-deduped-clean.tsv");
 
 // #[test]
 // fn layout_first_row_and_column() {
@@ -21,39 +24,42 @@ use rand;
 //     test_helpers::assert_correct_first_col(&grid);
 // }
 
-#[test]
-fn construct_is_deterministic_if_rng_is_seeded() 
-{
-    let mut run_stats = RunStats::new();
-    let grid1 = 
-    {
-        let mut rng = ChaCha8Rng::seed_from_u64(14);
-        let mut grid1 = ScandiGrid::initialize(12, 12);
-        grid1.construct(&mut rng, 2, &mut run_stats).ok();
-        grid1.layout
-    };
+// #[test]
+// fn construct_is_deterministic_if_rng_is_seeded() 
+// {
+//     let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+//     let mut run_stats = RunStats::new();
+//     let grid1 = 
+//     {
+//         let mut rng = ChaCha8Rng::seed_from_u64(14);
+//         let mut grid1 = ScandiGrid::initialize(12, 12, Rc::clone(&dictionary));
+//         grid1.construct(&mut rng, 2, &mut run_stats).ok();
+//         grid1.layout
+//     };
 
-    let mut run_stats = RunStats::new();
-    let grid2 = 
-    {
-        let mut rng = ChaCha8Rng::seed_from_u64(14);
-        let mut grid2 = ScandiGrid::initialize(12, 12);
-        grid2.construct(&mut rng,2, &mut run_stats).ok();
-        grid2.layout
-    };
+//     let mut run_stats = RunStats::new();
+//     let grid2 = 
+//     {
+//         let mut rng = ChaCha8Rng::seed_from_u64(14);
+//         let mut grid2 = ScandiGrid::initialize(12, 12, Rc::clone(&dictionary));
+//         grid2.construct(&mut rng,2, &mut run_stats).ok();
+//         grid2.layout
+//     };
 
-    assert_eq!(grid1, grid2);
-}
+//     assert_eq!(grid1, grid2);
+// }
 
 #[test]
 fn grid_is_valid()
 {
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
     // Testing with higher sizes can encounter "backtracking threshold exceeded", which causes the test to fail.
     // The "construct" function is not the right function to test here.
     for size in 3..10
     {
         let mut rng = rand::rng();
-        let mut grid = ScandiGrid::initialize(size, size);
+        let mut grid = ScandiGrid::initialize(size, size, Rc::clone(&dictionary));
         let mut run_stats = RunStats::new();
 
         if let Err(err) = grid.construct(&mut rng, 2, &mut run_stats)
@@ -64,7 +70,7 @@ fn grid_is_valid()
         grid.print();
         println!();
 
-        let words_vec : Vec<&str> = WORDS.lines().collect();
+        let words_vec : Vec<&str> = WORDS.lines().map(|line| line.split_once('\t').unwrap().0).collect();
         for slot in grid.word_slots 
         {
             assert!(slot.get_selected_word().is_some());

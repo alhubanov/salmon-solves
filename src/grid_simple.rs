@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use num::Integer;
 use rand::{self, seq::SliceRandom};
 use rand::rand_core::Rng;
@@ -15,6 +18,7 @@ mod gridcell;
 use gridcell::{GridCell, CellState, CrossingState};
 use crate::grid::Grid;
 use crate::grid::LayoutError;
+use crate::grid_scandi::dictionary::Dictionary;
 use crate::grid_scandi::run_stats::RunStats;
 
 static WORDS: &str = include_str!("../word_files/common_english_words_long.txt");
@@ -45,7 +49,7 @@ pub struct SimpleGrid {
 }
 
 impl Grid for SimpleGrid {
-    fn initialize(width: u32, height: u32) -> Self {
+    fn initialize(width: u32, height: u32, _dictionary: Rc<RefCell<Dictionary>>) -> Self {
         let mut layout : Vec<Vec<GridCell>> = Vec::new();
 
         for row_idx in 0..height {

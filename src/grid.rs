@@ -2,6 +2,10 @@ use wasm_bindgen::prelude::*;
 use rand::{prelude::*};
 use crate::{grid_scandi::{ScandiGrid, run_stats::RunStats}, grid_simple::SimpleGrid, ui_input_utilities::GridType};
 
+use std::rc::Rc;
+use std::cell::RefCell;
+use crate::grid_scandi::dictionary::Dictionary;
+
 #[derive(Debug)]
 pub enum LayoutError {
     NoPossibleDomainAfterRecursion,
@@ -16,7 +20,7 @@ pub enum LayoutError {
 }
 
 pub trait Grid {
-    fn initialize(width: u32, height: u32) -> Self;
+    fn initialize(width: u32, height: u32, dictionary: Rc<RefCell<Dictionary>>) -> Self;
     fn construct(&mut self, rng: &mut dyn Rng, max_depth: u32, run_stats: &mut RunStats) -> Result<(), LayoutError>;
     fn print(&self) -> ();
     fn layout(&self) -> Result<JsValue, JsValue>;
@@ -28,16 +32,16 @@ pub enum GenericGrid {
 }
 
 impl GenericGrid {
-    pub fn initialize(grid_type: &GridType, width: u32, height: u32) -> Self {
+    pub fn initialize(grid_type: &GridType, width: u32, height: u32, dictionary: Rc<RefCell<Dictionary>>) -> Self {
         match grid_type {
-            GridType::Scandi => GenericGrid::Scandi(ScandiGrid::initialize(width, height)),
-            GridType::Simple => GenericGrid::Simple(SimpleGrid::initialize(width, height)),
+            GridType::Scandi => GenericGrid::Scandi(ScandiGrid::initialize(width, height, dictionary)),
+            GridType::Simple => GenericGrid::Simple(SimpleGrid::initialize(width, height, dictionary)),
         }
     }
 }
 
 impl Grid for GenericGrid  {
-    fn initialize(_width: u32, _height: u32) -> Self {
+    fn initialize(_width: u32, _height: u32, _dictionary: Rc<RefCell<Dictionary>>) -> Self {
         panic!("Use GenericGrid::initialize(grid_type, width, height) instead.")
     }
 

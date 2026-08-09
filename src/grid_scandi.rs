@@ -18,7 +18,7 @@ mod test_helpers;
 pub mod gridcell;
 mod slot;
 mod slot_candidate;
-mod dictionary;
+pub mod dictionary;
 pub mod run_stats;
 
 use slot::Slot;
@@ -38,8 +38,6 @@ mod constants {
     pub const _DEFICIT_RATE_DEFAULT : f32                      = 0.35; // unused currently
 }
 
-static WORDS: &str = include_str!("../word_files/oewn-answer-clue-deduped-clean.tsv");
-
 pub struct ScandiGrid {
     width: u32,
     height: u32,
@@ -52,10 +50,9 @@ pub struct ScandiGrid {
 }
 
 impl Grid for ScandiGrid {
-    fn initialize(width: u32, height: u32) -> Self 
+    fn initialize(width: u32, height: u32, dictionary: Rc<RefCell<Dictionary>>) -> Self 
     {
         let mut layout : Vec<Vec<Rc<RefCell<GridCell>>>> = Vec::new();
-        let dictionary = Rc::new(RefCell::new(Dictionary::build(WORDS)));
 
         for row_idx in 0..height {
             layout.push(Vec::new());

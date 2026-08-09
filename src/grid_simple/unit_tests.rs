@@ -1,10 +1,17 @@
 use super::*;
 use super::test_helpers;
+use std::rc::Rc;
+use std::cell::RefCell;
+use crate::grid_scandi::dictionary;
+
+static WORDS: &str = include_str!("../../word_files/oewn-answer-clue-deduped-clean.tsv");
 
 #[test]
 fn cell_reset() {
 
-    let mut grid = SimpleGrid::initialize(1, 1);
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+
+    let mut grid = SimpleGrid::initialize(1, 1, dictionary);
 
     // case Filled
     grid.layout[0 as usize][0 as usize].cell_value = 'a';
@@ -30,7 +37,9 @@ fn cell_reset() {
 
 #[test]
 fn cell_confirmation() {
-    let mut grid = SimpleGrid::initialize(1, 1);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(1, 1, dictionary);
 
     // case Filled
     grid.layout[0 as usize][0 as usize].cell_value = 'a';
@@ -56,7 +65,9 @@ fn cell_confirmation() {
 
 #[test]
 fn placing_words_horizontally() {
-    let mut grid = SimpleGrid::initialize(4, 4);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(4, 4, dictionary);
     let result = grid.place_word_horizontally_starting_at_given_coordinates(0, 0, &"word".to_owned());
 
     assert!(result.is_ok());
@@ -75,7 +86,9 @@ fn placing_words_horizontally() {
 
 #[test]
 fn placing_words_horizontally_with_crossing_at_start() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
     grid.layout[0 as usize][0 as usize].cell_value = 'm';
     grid.layout[0 as usize][0 as usize].cell_state = CellState::Filled;
     grid.layout[1 as usize][0 as usize].cell_value = 'a';
@@ -116,7 +129,9 @@ fn placing_words_horizontally_with_crossing_at_start() {
 
 #[test]
 fn placing_words_horizontally_with_crossing_in_the_middle() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
     grid.layout[0 as usize][2 as usize].cell_value = 'm';
     grid.layout[0 as usize][2 as usize].cell_state = CellState::Filled;
     grid.layout[1 as usize][2 as usize].cell_value = 'a';
@@ -157,7 +172,9 @@ fn placing_words_horizontally_with_crossing_in_the_middle() {
 
 #[test]
 fn placing_words_horizontally_with_crossing_in_the_end() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
     grid.layout[0 as usize][4 as usize].cell_value = 'm';
     grid.layout[0 as usize][4 as usize].cell_state = CellState::Filled;
     grid.layout[1 as usize][4 as usize].cell_value = 'a';
@@ -198,7 +215,9 @@ fn placing_words_horizontally_with_crossing_in_the_end() {
 
 #[test]
 fn placing_words_vertically() {
-    let mut grid = SimpleGrid::initialize(4, 4);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(4, 4, dictionary);
     let result = grid.place_word_vertically_starting_at_given_coordinates(0, 0, &"word".to_owned());
 
     assert!(result.is_ok());
@@ -217,7 +236,9 @@ fn placing_words_vertically() {
 
 #[test]
 fn placing_words_vertically_with_crossing_at_start() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
     grid.layout[0 as usize][0 as usize].cell_value = 'm';
     grid.layout[0 as usize][0 as usize].cell_state = CellState::Filled;
     grid.layout[0 as usize][1 as usize].cell_value = 'a';
@@ -258,7 +279,9 @@ fn placing_words_vertically_with_crossing_at_start() {
 
 #[test]
 fn placing_words_vertically_with_crossing_in_the_middle() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
     grid.layout[2 as usize][0 as usize].cell_value = 'm';
     grid.layout[2 as usize][0 as usize].cell_state = CellState::Filled;
     grid.layout[2 as usize][1 as usize].cell_value = 'a';
@@ -299,7 +322,9 @@ fn placing_words_vertically_with_crossing_in_the_middle() {
 
 #[test]
 fn placing_words_vertically_with_crossing_in_the_end() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
     grid.layout[4 as usize][0 as usize].cell_value = 'm';
     grid.layout[4 as usize][0 as usize].cell_state = CellState::Filled;
     grid.layout[4 as usize][1 as usize].cell_value = 'a';
@@ -340,7 +365,9 @@ fn placing_words_vertically_with_crossing_in_the_end() {
 
 #[test]
 fn placing_words_out_of_bounds() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
 
     let result = grid.place_word_horizontally_starting_at_given_coordinates(4, 0, &"map".to_owned());
     assert!(result.is_ok());
@@ -356,7 +383,9 @@ fn placing_words_out_of_bounds() {
 
 #[test]
 fn placing_words_too_close_1() {
-    let mut grid = SimpleGrid::initialize(7, 7);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(7, 7, dictionary);
 
     let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"map".to_owned());
     assert!(result.is_ok());
@@ -378,7 +407,9 @@ fn placing_words_too_close_1() {
 
 #[test]
 fn placing_words_too_close_2() {
-    let mut grid = SimpleGrid::initialize(7, 7);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(7, 7, dictionary);
 
     let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"map".to_owned());
     assert!(result.is_ok());
@@ -400,7 +431,9 @@ fn placing_words_too_close_2() {
 
 #[test]
 fn impossible_crossing_1() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
 
     let result = grid.place_word_horizontally_starting_at_given_coordinates(2, 0, &"maple".to_owned());
     assert!(result.is_ok());
@@ -413,7 +446,9 @@ fn impossible_crossing_1() {
 
 #[test]
 fn impossible_crossing_2() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
 
     let result = grid.place_word_vertically_starting_at_given_coordinates(0, 2, &"baste".to_owned());
     assert!(result.is_ok());
@@ -426,7 +461,9 @@ fn impossible_crossing_2() {
 
 #[test]
 fn placing_first_word_1() {
-    let mut grid = SimpleGrid::initialize(5, 5);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(5, 5, dictionary);
 
     let result = grid.place_first_word(&"bass".to_owned());
     assert!(result.is_ok());
@@ -436,7 +473,9 @@ fn placing_first_word_1() {
 
 #[test]
 fn placing_first_word_2() {
-    let mut grid = SimpleGrid::initialize(6, 6);
+
+    let dictionary = Rc::new(RefCell::new(dictionary::Dictionary::build(WORDS)));
+    let mut grid = SimpleGrid::initialize(6, 6, dictionary);
 
     let result = grid.place_first_word(&"bass".to_owned());
     assert!(result.is_ok());
