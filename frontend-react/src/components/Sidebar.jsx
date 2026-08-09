@@ -164,12 +164,24 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
           {/* Actions */}
           <button className="btn-generate" onClick={onGenerate}> Generate crossword → </button>
 
-          <p className="sidebar-credit">
-            Clues compiled from{" "}
-            <a href="https://en-word.net/" target="_blank" rel="noreferrer">Open English WordNet</a>,
-            licensed under{" "}
-            <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
-          </p>
+          {/* CC BY 4.0 asks for the work, its source, the licence, and a note that it was changed. */}
+          <section className="sidebar-legal">
+            <h3>Clue data</h3>
+
+            <p>
+              Clues are adapted from{" "}
+              <a href="https://en-word.net/" target="_blank" rel="noreferrer">Open English WordNet</a>,
+              which builds on{" "}
+              <a href="https://wordnet.princeton.edu/" target="_blank" rel="noreferrer">Princeton WordNet</a>.
+            </p>
+
+            <p>
+              Open English WordNet is licensed under{" "}
+              <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
+              Its definitions have been extracted, filtered and edited here for use as crossword clues,
+              so the wording may differ from the original.
+            </p>
+          </section>
         </div>
       )}
     </div>

@@ -246,18 +246,34 @@ button { font-family: inherit; cursor: pointer; }
 }
 .btn-generate:hover { opacity: 0.88; }
 
-.sidebar-credit {
-  margin-top: 18px;
+.sidebar-legal {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar-legal h3 {
+  margin-bottom: 7px;
   font-size: 11px;
-  line-height: 1.5;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.sidebar-legal p {
+  font-size: 11px;
+  line-height: 1.55;
   color: var(--text-hint);
 }
 
-.sidebar-credit a {
+.sidebar-legal p + p { margin-top: 7px; }
+
+.sidebar-legal a {
   color: var(--text-secondary);
   text-decoration: underline;
 }
-.sidebar-credit a:hover { color: var(--text-primary); }
+.sidebar-legal a:hover { color: var(--text-primary); }
 
 .btn-reset {
   width: 100%;
