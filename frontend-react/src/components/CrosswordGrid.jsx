@@ -258,9 +258,11 @@ export default function CrosswordGrid({ settings, generateRequest })
     return (cells[idx]?.cell?.Letter?.[0] ?? "").toUpperCase();
   }
 
+  // Only what the solver has typed. Falling back to the cell's own letter here would hand the
+  // solution to both the checker and the printer, neither of which should ever see it.
   function currentLetter(idx)
   {
-    return (userInput[idx] ?? cells[idx]?.cell?.Letter?.[0] ?? "").toUpperCase();
+    return (userInput[idx] ?? "").toUpperCase();
   }
 
   // Judged per cell rather than per slot: the letter either matches the solution or it does not,
@@ -689,7 +691,7 @@ export default function CrosswordGrid({ settings, generateRequest })
             >
               <input
                 ref={(el) => { inputRefs.current[idx] = el; }}
-                value={userInput[idx] ?? normalizedCell.value ?? ""}
+                value={userInput[idx] ?? ""}
                 onChange={(e) => handleCellChange(idx, e.nativeEvent.data)}
                 onKeyDown={(e) => handleCellKeyDown(idx, e)}
                 onFocus={(e) => e.target.select()}
