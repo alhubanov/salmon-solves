@@ -7,6 +7,7 @@
   --text-secondary: #6b6a65;
   --text-hint: #a09f9a;
   --accent: #6c63ff;        /* purple — primary action */
+  --logo-blue: #0083d4;     /* sampled off the logo fish, which is a single flat colour */
   --slot-highlight: #d7e9fd;      /* soft blue — cells of the selected slot */
   --slot-highlight-row: #e9f3fe;  /* same hue, lighter, for the selected clue row */
   --check-correct: #d6efdc;       /* soft green — slot answered correctly */
@@ -253,7 +254,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 12px;
   border-radius: var(--radius-lg);
   border: none;
-  background: var(--accent);
+  background: var(--logo-blue);
   color: #fff;
   font-size: 16px;
   font-weight: 600;
