@@ -53,11 +53,21 @@ button { font-family: inherit; cursor: pointer; }
   padding: 20px 20px 32px;
   transition: width 0.25s ease;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar--open  { width: 340px; }
 /* collapsed it holds nothing but the toggle: 20px padding + 30px button + 20px padding */
 .sidebar--closed { width: 70px; }
+
+/* Column so the footer's auto margin has room to push against. "1 0 auto" fills the sidebar when
+   the settings are short, but refuses to shrink when they are not, leaving .sidebar to scroll. */
+.sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+}
 
 /* min-height holds the toggle at the same level once the logo is dropped on collapse */
 .sidebar-header {
@@ -65,14 +75,20 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   gap: 12px;
   min-height: 34px;
-  margin-bottom: 28px;
+  padding-bottom: 24px;
+  margin-bottom: 36px; 
+}
+
+/* Collapsed, the header is just the toggle, and the rule under it reads as a stray dash. */
+.sidebar--open .sidebar-header {
+  border-bottom: 1px solid var(--border);
 }
 
 /* the logo is a wordmark, so it gets its natural aspect rather than the mockup's round badge */
 .sidebar-logo {
   display: flex;
   align-items: center;
-  height: 34px;
+  height: 54px;
   flex-shrink: 0;
 }
 
@@ -106,7 +122,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .sidebar-title {
-  font-size: 21px;
+  font-size: 24px;
   font-weight: 700;
   margin-bottom: 28px;
   line-height: 1.2;
@@ -246,11 +262,22 @@ button { font-family: inherit; cursor: pointer; }
 }
 .btn-generate:hover { opacity: 0.88; }
 
+/* Held at the foot of the sidebar rather than trailing the Generate button. The padding doubles as
+   the minimum gap once the settings grow tall enough for the auto margin to collapse to nothing. */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 26px;
+  animation: fadeIn 0.15s ease;
+}
+
 .sidebar-legal {
   margin-top: 26px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
 }
+
+/* the footer's own padding already spaces the first note off the settings above */
+.sidebar-footer > .sidebar-legal:first-child { margin-top: 0; }
 
 /* consecutive notes sit closer together and share the one rule above them */
 .sidebar-legal + .sidebar-legal {

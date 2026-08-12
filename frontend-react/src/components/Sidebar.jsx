@@ -1,5 +1,5 @@
 import { useState } from "react";
-import logo from "../assets/logo.png";
+import logo from "../assets/logo-salmon.png";
 
 // All the settings that adapt per crossword type
 const TYPE_OPTIONS = [/* "Simple", */ "Scandi"];
@@ -60,7 +60,7 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
       <div className="sidebar-header">
         {sidebarOpen && (
           <div className="sidebar-logo">
-            <img src={logo} alt="Crossy" />
+            <img src={logo} alt="Salmon Solves" />
           </div>
         )}
 
@@ -76,6 +76,7 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
 
       {sidebarOpen &&
       (
+        <>
         <div className="sidebar-content">
           <h2 className="sidebar-title">Create your crossword!</h2>
 
@@ -163,7 +164,10 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
 
           {/* Actions */}
           <button className="btn-generate" onClick={onGenerate}> Generate crossword → </button>
+        </div>
 
+        {/* Sits apart from the settings so the flex column can hold it at the foot of the sidebar. */}
+        <div className="sidebar-footer">
           {/* CC BY 4.0 asks for the work, its source, the licence, and a note that it was changed. */}
           <section className="sidebar-legal">
             <h3>Clue data</h3>
@@ -193,6 +197,7 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
             </p>
           </section>
         </div>
+        </>
       )}
     </div>
   );
