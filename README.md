@@ -1,7 +1,7 @@
 # Salmon Solves
 Welcome to Salmon Solves - a generator for crossword puzzles, currently only of the Scandi variant. 
 
-You can find the project hosted here: < insert link once available >
+You can find the project hosted here: [Salmon Solves](https://www.salmonsolves.com/)
 
 It features a fully human-built Rust backend. <br>
 It also features an interactive UI, designed by [Ana Hubanova](https://www.linkedin.com/in/ana-hubanova/), but largely built with Claude Opus 5.
