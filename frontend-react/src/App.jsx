@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import CrosswordGrid from "./components/CrosswordGrid";
+import { useIsNarrow } from "./useIsNarrow";
 import "./App.css";
 import init from "../../pkg/crossy"
 
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS = {
 export default function App() 
 {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isNarrow = useIsNarrow();
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   // A counter rather than a flag: each press is a fresh request, so pressing Generate again with
   // the same settings still rebuilds, while editing settings on its own does nothing.
@@ -40,6 +42,10 @@ export default function App()
   {
     if (!wasmReady) return;
     setGenerateRequest((request) => request + 1);
+
+    // Stacked on a phone the board sits a full screen below the settings, so pressing Generate
+    // would appear to do nothing. Collapsing the sidebar puts the new puzzle straight on screen.
+    if (isNarrow) setSidebarOpen(false);
   }
 
   return (

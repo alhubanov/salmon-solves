@@ -1,5 +1,6 @@
 import { useState } from "react";
 import logo from "../assets/logo-salmon.png";
+import { useIsNarrow } from "../useIsNarrow";
 
 // All the settings that adapt per crossword type
 const TYPE_OPTIONS = [/* "Simple", */ "Scandi"];
@@ -38,6 +39,7 @@ function PanelIcon() {
 export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, onToggle })
 {
   const { type, grid } = settings;
+  const isNarrow = useIsNarrow();
 
   // "Custom" cannot be read back off the grid string alone — 15x15 typed by hand looks exactly like
   // the preset — so the mode the user picked is tracked here.
@@ -58,7 +60,9 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
   return (
     <div className="sidebar-inner">
       <div className="sidebar-header">
-        {sidebarOpen && (
+        {/* Collapsed on a phone this header is the page's title bar rather than a narrow rail, so
+            the logo stays; collapsed on desktop there is no room for it beside the toggle. */}
+        {(sidebarOpen || isNarrow) && (
           <div className="sidebar-logo">
             <img src={logo} alt="Salmon Solves" />
           </div>

@@ -1,6 +1,7 @@
 import { Fragment, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { build_crossword_grid } from "../../../pkg/crossy";
 import { exportCrosswordPdf } from "../exportPdf";
+import { useIsNarrow } from "../useIsNarrow";
 
 // Parse "14x14" → { cols: 14, rows: 14 }
 function parseGrid(gridStr)
@@ -18,6 +19,17 @@ const VERTICAL_DIRECTIONS = ["Down", "DownOnRightSide"];
 // Kept in step with the solved-overlay animation in App.css.
 const SOLVED_BANNER_MS = 1500;
 
+// The hint above the board and the toolbar below it, with the row gaps either side. Deducted from
+// the pane so a board sized to the full height still leaves those two rows their space.
+const BOARD_CHROME_HEIGHT = 70;
+
+// Matches the column-gap between the board and the clue panel in App.css.
+const CLUE_COLUMN_GAP = 28;
+
+// The board's 2px outer border, both sides. It sits outside the cells the size is computed from,
+// so without it the board lands a couple of pixels wider than the space measured for it.
+const BOARD_BORDER = 4;
+
 // The generator's Theme enum only knows these five. Chips outside it are offered in the sidebar but
 // have no counterpart yet, so they are dropped here — passing one through fails the whole call with
 // "unknown variant" and no grid comes back.
@@ -31,7 +43,7 @@ const BACKEND_THEMES = {
 
 // Kept at module scope so typing in the grid re-renders the lists in place rather than
 // remounting them, which would throw away how far the user had scrolled.
-function ClueList({ title, arrow, clues, selectedSlotId, selectionTick, onSelect })
+function ClueList({ title, arrow, clues, selectedSlotId, selectionTick, onSelect, isNarrow })
 {
   const selectedRow = useRef(null);
 
@@ -41,8 +53,13 @@ function ClueList({ title, arrow, clues, selectedSlotId, selectionTick, onSelect
   // than the id so re-picking the slot that is already selected still scrolls back to it.
   useEffect(() =>
   {
+    // Stacked under the board the list is no longer its own scroll area but part of the page, and
+    // the same call scrolls the page instead — pulling the board off screen on every tap, while the
+    // solver is typing into it. Down there the selected row is left to its highlight alone.
+    if (isNarrow) return;
+
     selectedRow.current?.scrollIntoView({ block: "nearest", behavior: "auto" });
-  }, [selectedSlotId, selectionTick]);
+  }, [selectedSlotId, selectionTick, isNarrow]);
 
   return (
     <section className="clue-list">
@@ -98,28 +115,67 @@ export default function CrosswordGrid({ settings, generateRequest })
   // Flat cell index → the <input> element, so selecting a clue can move focus into the grid.
   const inputRefs = useRef({});
   const focusFirstCell = useRef(false);
+  // The cell tapped last, so a repeat tap can be told apart from a move to another cell.
+  const lastClickedCell = useRef(null);
+  // Which cell the caret is in, so the touch-only direction button knows what to switch.
+  const [focusedCell, setFocusedCell] = useState(null);
 
-  const containerRef = useRef(null);
-  const [containerSize, setContainerSize] = useState({ width: 800, height: 800 });
+  const isNarrow = useIsNarrow();
 
-  useEffect(() => 
+  // The outermost element of whichever branch renders, used only to reach .main-area above it.
+  const rootRef = useRef(null);
+  const cluePanelRef = useRef(null);
+  const mainContent = useRef(null);
+  const [available, setAvailable] = useState({ width: 800, height: 800 });
+
+  const hasBoard = cells.length > 0 && !generating;
+
+  useEffect(() =>
   {
-    const el = containerRef.current;
-    if (!el) return;
+    // .main-area, the pane the board is centred in. Measuring our own root instead would feed the
+    // board's size straight back into the space it is being fitted to.
+    const main = rootRef.current?.parentElement;
+    if (!main) return;
 
-    const observer = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      setContainerSize({ width, height });
+    const observer = new ResizeObserver((entries) =>
+    {
+      // contentRect excludes the pane's padding, so no padding constant has to be kept in step here.
+      const mainEntry = entries.find((entry) => entry.target === main);
+      if (mainEntry) mainContent.current = mainEntry.contentRect;
+      if (!mainContent.current) return;
+
+      // Beside the board the panel takes its share of the width; stacked under it, it takes none.
+      // Its own width is a clamp on the viewport, never a function of the board, so reading it back
+      // cannot loop. offsetWidth rather than the entry, to include its padding and border.
+      const panel = cluePanelRef.current;
+      const panelSpace = panel && !isNarrow ? panel.offsetWidth + CLUE_COLUMN_GAP : 0;
+
+      setAvailable({
+        width: mainContent.current.width - panelSpace,
+        height: mainContent.current.height - BOARD_CHROME_HEIGHT,
+      });
     });
 
-    observer.observe(el);
+    // Observing fires the callback once with the current size, so no separate first measurement.
+    observer.observe(main);
+    if (cluePanelRef.current) observer.observe(cluePanelRef.current);
+
     return () => observer.disconnect();
-  }, []);
+  }, [hasBoard, isNarrow]);
 
   const MAX_CELL_SIZE = 80;
   const MIN_CELL_SIZE = 20;
-  const rawCellSize = Math.min(containerSize.width / cols, containerSize.height / rows);
-  const cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, rawCellSize));
+
+  // Stacked on a phone the page scrolls, so only the width is a real constraint; the board is not
+  // squeezed to fit a viewport height it is free to run past.
+  const boardWidth = available.width - BOARD_BORDER;
+  const boardHeight = available.height - BOARD_BORDER;
+
+  const rawCellSize = isNarrow
+    ? boardWidth / cols
+    : Math.min(boardWidth / cols, boardHeight / rows);
+
+  const cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, Math.floor(rawCellSize)));
 
   // Walk every clue square once and split its clues into the two lists shown beside the grid.
   const { horizontalClues, verticalClues, horizontalSlotIds } = useMemo(() =>
@@ -201,6 +257,15 @@ export default function CrosswordGrid({ settings, generateRequest })
 
   const slotAxis = horizontalSlotIds.has(selectedSlotId) ? "horizontal" : "vertical";
 
+  // The clue for the word being solved, repeated under the board where the list is out of reach.
+  const selectedClue = useMemo(() =>
+  {
+    if (selectedSlotId == null) return null;
+
+    const clues = slotAxis === "horizontal" ? horizontalClues : verticalClues;
+    return clues.find((clue) => clue.number === selectedSlotId) ?? null;
+  }, [selectedSlotId, slotAxis, horizontalClues, verticalClues]);
+
   // Picking a clue jumps the caret to the slot's first letter, but clicking a cell in the grid must
   // leave the caret where it was clicked, so only the clue list arms this.
   useEffect(() =>
@@ -222,7 +287,21 @@ export default function CrosswordGrid({ settings, generateRequest })
 
   function selectSlotFromClue(slotId)
   {
+    // Arriving from the clue list, the next tap on a cell is a first tap, whatever was tapped before.
+    lastClickedCell.current = null;
     selectSlot(slotId, true);
+  }
+
+  // Swaps to the other slot through this cell, leaving the caret where it is. A cell with no
+  // crossing slot has nothing to swap to, so the selection stays put. Reached from the space bar,
+  // from a second tap on the cell, and from the toolbar button — a phone has none of the first.
+  function switchDirection(idx)
+  {
+    const slotIds = cells[idx]?.cell?.Letter?.[1] ?? [];
+    const wantsHorizontal = slotAxis !== "horizontal";
+    const crossingId = slotIds.find((id) => horizontalSlotIds.has(id) === wantsHorizontal);
+
+    if (crossingId !== undefined) selectSlot(crossingId, false);
   }
 
   // Clicking a letter cell selects the slot running through it. Crossing cells belong to two, and
@@ -233,6 +312,15 @@ export default function CrosswordGrid({ settings, generateRequest })
 
     const slotIds = cells[idx]?.cell?.Letter?.[1];
     if (!slotIds?.length) return;
+
+    // Tapping the cell that is already selected switches axis instead of reselecting the same slot.
+    if (lastClickedCell.current === idx && selectedSlotCells.includes(idx))
+    {
+      switchDirection(idx);
+      return;
+    }
+
+    lastClickedCell.current = idx;
 
     const horizontalId = slotIds.find((id) => horizontalSlotIds.has(id));
     selectSlot(horizontalId ?? slotIds[0], false);
@@ -364,18 +452,10 @@ export default function CrosswordGrid({ settings, generateRequest })
       return;
     }
 
-    // Space swaps to the other slot through this cell, leaving the caret where it is. A cell with
-    // no crossing slot has nothing to swap to, so the selection stays put.
     if (event.key === " ")
     {
       event.preventDefault();
-
-      const slotIds = cells[idx]?.cell?.Letter?.[1] ?? [];
-      const wantsHorizontal = slotAxis !== "horizontal";
-      const crossingId = slotIds.find((id) => horizontalSlotIds.has(id) === wantsHorizontal);
-
-      if (crossingId !== undefined) selectSlot(crossingId, false);
-
+      switchDirection(idx);
       return;
     }
 
@@ -392,6 +472,27 @@ export default function CrosswordGrid({ settings, generateRequest })
       clearCell(target);
       focusCell(target);
     }
+  }
+
+  // Soft keyboards do not reliably report Backspace as a keydown — Android in particular sends an
+  // undifferentiated key for it — so the step-back onto the previous cell is also driven from the
+  // input event, which names the operation outright. Deleting a letter that is actually there needs
+  // nothing extra: it reaches handleCellChange as a change to an empty string.
+  function handleCellBeforeInput(idx, event)
+  {
+    if (event.nativeEvent.inputType !== "deleteContentBackward") return;
+    if (event.currentTarget.value !== "") return;
+
+    event.preventDefault();
+
+    const position = selectedSlotCells.indexOf(idx);
+    if (position === -1) return;
+
+    const target = selectedSlotCells[position - 1];
+    if (target === undefined) return;
+
+    clearCell(target);
+    focusCell(target);
   }
 
   // Typing a letter walks the caret to the next cell of the selected slot. The browser reports the
@@ -451,7 +552,9 @@ export default function CrosswordGrid({ settings, generateRequest })
           setSelectedSlotId(null);
           setSlotEverSelected(false);
           setCheckResults(null);
+          setFocusedCell(null);
           inputRefs.current = {};
+          lastClickedCell.current = null;
         }
         finally
         {
@@ -610,7 +713,7 @@ export default function CrosswordGrid({ settings, generateRequest })
 
   if (generating) {
     return (
-      <div className="empty-state">
+      <div className="empty-state" ref={rootRef}>
         <div className="spinner" role="status" aria-label="Generating crossword" />
         <p style={{ fontSize: "20px", marginTop: "18px" }}>Generating…</p>
       </div>
@@ -619,7 +722,7 @@ export default function CrosswordGrid({ settings, generateRequest })
 
   if (cells.length === 0) {
     return (
-      <div className="empty-state">
+      <div className="empty-state" ref={rootRef}>
         <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="4" y="4" width="18" height="18" rx="2" fill="#e4e2db"/>
           <rect x="26" y="4" width="18" height="18" rx="2" fill="#e4e2db"/>
@@ -634,7 +737,7 @@ export default function CrosswordGrid({ settings, generateRequest })
   const hasClues = horizontalClues.length > 0 || verticalClues.length > 0;
 
   return (
-    <div className={`grid-and-clues ${hasClues ? "grid-and-clues--with-clues" : ""}`}>
+    <div className={`grid-and-clues ${hasClues ? "grid-and-clues--with-clues" : ""}`} ref={rootRef}>
       {/* pointer-events stay off, so the shade never swallows a click on its way out */}
       {solved && (
         <div className="solved-overlay" role="status">
@@ -644,63 +747,77 @@ export default function CrosswordGrid({ settings, generateRequest })
 
       {/* always rendered, only made invisible, so revealing it does not shift the grid */}
       <p className={`grid-hint ${slotEverSelected ? "" : "grid-hint--hidden"}`}>
-        Press <kbd>space</kbd> to switch between the horizontal and vertical word through the current cell.
+        {isNarrow
+          ? "Tap the highlighted cell again to switch between the horizontal and vertical word through it."
+          : <>Press <kbd>space</kbd> to switch between the horizontal and vertical word through the current cell.</>}
       </p>
 
-      <div
-        className="crossword-grid"
-        style={{
-          gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
-          gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
-        }}
-      >
-        {cells.map((cell, idx) => {
-          const normalizedCell = normalizeCell(cell, gridType);
+      {/* Wraps the board so it can be centred, and scrolled sideways if a phone is narrower than
+          the smallest cells the grid will go down to. */}
+      <div className="board-area">
+        <div
+          className="crossword-grid"
+          style={{
+            gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+            gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
+          }}
+        >
+          {cells.map((cell, idx) => {
+            const normalizedCell = normalizeCell(cell, gridType);
 
-          if (normalizedCell.kind === "null") 
-          {
-            return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
-          }
+            if (normalizedCell.kind === "null") 
+            {
+              return <div key={idx} className="grid-cell null" style={{ width: 0, height: 0 }} />;
+            }
 
-          if (normalizedCell.kind === "black") 
-          {
+            if (normalizedCell.kind === "black") 
+            {
+              return (
+                <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize, position: "relative" }}>
+                  {/* each clue is a (description, slot number, direction) tuple */}
+                  {normalizedCell.clue_vector?.map(([, number, direction], i) => (
+                    <Fragment key={i}>
+                      <ClueArrow direction={direction} cellSize={cellSize} />
+                      <ClueNumber number={number} direction={direction} cellSize={cellSize} />
+                    </Fragment>
+                  ))}
+                </div>
+              );
+            }
+
+            // while a check is on screen its colouring replaces the blue selection band
+            const checkState = checkResults?.correct.has(idx) ? "check-correct"
+              : checkResults?.incorrect.has(idx) ? "check-incorrect"
+              : highlightedCells.has(idx) ? "highlighted"
+              : "";
+
             return (
-              <div key={idx} className="grid-cell black" style={{ width: cellSize, height: cellSize, position: "relative" }}>
-                {/* each clue is a (description, slot number, direction) tuple */}
-                {normalizedCell.clue_vector?.map(([, number, direction], i) => (
-                  <Fragment key={i}>
-                    <ClueArrow direction={direction} cellSize={cellSize} />
-                    <ClueNumber number={number} direction={direction} cellSize={cellSize} />
-                  </Fragment>
-                ))}
+              <div
+                key={idx}
+                className={`grid-cell white ${checkState}`}
+                style={{ width: cellSize, height: cellSize }}
+              >
+                <input
+                  ref={(el) => { inputRefs.current[idx] = el; }}
+                  value={userInput[idx] ?? ""}
+                  onChange={(e) => handleCellChange(idx, e.nativeEvent.data)}
+                  onKeyDown={(e) => handleCellKeyDown(idx, e)}
+                  onBeforeInput={(e) => handleCellBeforeInput(idx, e)}
+                  onFocus={(e) => { setFocusedCell(idx); e.target.select(); }}
+                  onClick={() => handleCellClick(idx)}
+                  aria-label={`cell ${idx}`}
+                  // Phone keyboards otherwise capitalise, autocorrect and suggest their way through a
+                  // grid of one-letter fields.
+                  inputMode="text"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
               </div>
             );
-          }
-
-          // while a check is on screen its colouring replaces the blue selection band
-          const checkState = checkResults?.correct.has(idx) ? "check-correct"
-            : checkResults?.incorrect.has(idx) ? "check-incorrect"
-            : highlightedCells.has(idx) ? "highlighted"
-            : "";
-
-          return (
-            <div
-              key={idx}
-              className={`grid-cell white ${checkState}`}
-              style={{ width: cellSize, height: cellSize }}
-            >
-              <input
-                ref={(el) => { inputRefs.current[idx] = el; }}
-                value={userInput[idx] ?? ""}
-                onChange={(e) => handleCellChange(idx, e.nativeEvent.data)}
-                onKeyDown={(e) => handleCellKeyDown(idx, e)}
-                onFocus={(e) => e.target.select()}
-                onClick={() => handleCellClick(idx)}
-                aria-label={`cell ${idx}`}
-              />
-            </div>
-          );
-        })}
+          })}
+        </div>
       </div>
 
       <div className="grid-toolbar">
@@ -712,15 +829,43 @@ export default function CrosswordGrid({ settings, generateRequest })
           </svg>
         </button>
 
+        {/* The only way to switch axis on touch, and a visible one next to the space bar elsewhere. */}
+        {focusedCell !== null && (
+          <button
+            className="grid-toolbar__switch"
+            // Keeps the caret — and with it the phone's keyboard — in the grid.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => switchDirection(focusedCell)}
+          >
+            Switch direction ⇄
+          </button>
+        )}
+
         <button onClick={checkAnswers}>Check answers</button>
       </div>
 
+      {/* Only where the list is a scroll away: beside the board it would just repeat what is in
+          view, and the selected row is highlighted there already. */}
+      {isNarrow && selectedClue && (
+        <p className="current-clue">
+          <span className="current-clue-number">{selectedClue.number}.</span>
+          <span className="current-clue-arrow" aria-hidden="true">{slotAxis === "horizontal" ? "→" : "↓"}</span>
+          <span>{selectedClue.description}</span>
+        </p>
+      )}
+
       {hasClues && (
-        <aside className="clue-panel" style={{ height: Math.max(280, rows * cellSize) }}>
+        // Stacked under the board the panel takes the height its clues need, and the page scrolls;
+        // beside the board it is pinned to the board's own height so the two line up.
+        <aside
+          className="clue-panel"
+          ref={cluePanelRef}
+          style={isNarrow ? undefined : { height: Math.max(280, rows * cellSize) }}
+        >
           <h2 className="clue-panel-title">Clues</h2>
 
-          <ClueList title="Across" arrow="→" clues={horizontalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
-          <ClueList title="Down" arrow="↓" clues={verticalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} />
+          <ClueList title="Across" arrow="→" clues={horizontalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} isNarrow={isNarrow} />
+          <ClueList title="Down" arrow="↓" clues={verticalClues} selectedSlotId={selectedSlotId} selectionTick={selectionTick} onSelect={selectSlotFromClue} isNarrow={isNarrow} />
         </aside>
       )}
     </div>

@@ -353,9 +353,16 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .grid-hint      { grid-column: 1; grid-row: 1; }
-.crossword-grid { grid-column: 1; grid-row: 2; }
+.board-area     { grid-column: 1; grid-row: 2; }
 .grid-toolbar   { grid-column: 1; grid-row: 3; }
 .clue-panel     { grid-column: 2; grid-row: 2; }
+
+/* Only a centring wrapper on desktop; on a phone it is also what scrolls a board too wide to fit. */
+.board-area {
+  display: flex;
+  justify-content: center;
+  max-width: 100%;
+}
 
 .crossword-grid {
   border: 2px solid var(--text-primary);
@@ -541,6 +548,37 @@ button { font-family: inherit; cursor: pointer; }
 }
 .grid-toolbar button:hover { text-decoration: underline; }
 
+/* The space bar's stand-in on touch, and a discoverable second route to it everywhere else. */
+.grid-toolbar__switch { white-space: nowrap; }
+
+/* ── the clue being solved ── */
+/* Stacked layouts put the clue list far enough below the board to be off screen, so the selected
+   word's clue is repeated here, right under the board. Carries the same highlight as its row in
+   the list, so the two read as the same thing. */
+.current-clue {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  padding: 11px 13px;
+  border-radius: var(--radius-md);
+  background: var(--slot-highlight-row);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.current-clue-number {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.current-clue-arrow {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
 /* ── solved celebration ── */
 /* Fixed to the viewport so the shade covers the whole screen, not just the board. The 1.5s here
    matches SOLVED_BANNER_MS, which is what unmounts it. */
@@ -601,3 +639,95 @@ button { font-family: inherit; cursor: pointer; }
   to { transform: rotate(360deg); }
 }
 .empty-state p { font-size: 14px; margin-top: 8px; }
+
+/* ── phones and narrow windows ── */
+/* The width here is repeated as NARROW_QUERY in useIsNarrow.js, which drives the two parts of this
+   layout CSS cannot reach: the clue panel's inline height, and the hint that names the space bar. */
+@media (max-width: 900px)
+{
+  /* The desktop shell pins itself to the viewport and scrolls its panes independently inside it.
+     Nested scrolling panes are miserable on a phone, so here the document itself scrolls and each
+     pane grows to whatever height its content needs. */
+  .app-layout {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .app-body {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  /* Full width in both states — collapsed is a title bar across the top, not a rail down the side. */
+  .sidebar,
+  .sidebar--open,
+  .sidebar--closed {
+    width: 100%;
+    padding: 16px 16px 24px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+  }
+
+  .sidebar--closed { padding-bottom: 16px; }
+  .sidebar--closed .sidebar-header { padding-bottom: 0; margin-bottom: 0; }
+
+  /* Nothing left to push the footer against once the sidebar is only as tall as its contents. */
+  .sidebar-inner { flex: 0 0 auto; }
+
+  .sidebar-header { padding-bottom: 16px; margin-bottom: 24px; }
+  .sidebar-logo { height: 44px; }
+  .sidebar-title { font-size: 20px; margin-bottom: 20px; }
+  .sidebar-footer { margin-top: 32px; }
+
+  .main-area {
+    /* Centring a pane that is taller than the screen strands its top above the scroll. */
+    align-items: flex-start;
+    padding: 16px 12px 32px;
+    overflow: visible;
+  }
+
+  /* One column: board, toolbar, the current clue, then the full list underneath rather than beside.
+     Placed by source order rather than by row number, so nothing leaves an empty track behind on
+     the way in or out — the current clue only exists while a word is selected. */
+  .grid-and-clues--with-clues {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    column-gap: 0;
+    row-gap: 12px;
+  }
+
+  .grid-hint,
+  .board-area,
+  .grid-toolbar,
+  .current-clue,
+  .clue-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .clue-panel {
+    width: 100%;
+    height: auto;   /* the board-matching height is inline, and only set on wide screens */
+  }
+
+  /* Last resort for a phone narrower than the grid at its smallest cell size. */
+  .board-area {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  /* 16px is the floor below which iOS zooms the whole page in on a focused field. */
+  .grid-cell.white input { font-size: 16px; }
+
+  .grid-toolbar {
+    flex-wrap: wrap;
+    gap: 4px 16px;
+  }
+
+  .grid-hint { font-size: 12px; }
+
+  .solved-message { font-size: 28px; }
+}
