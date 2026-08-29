@@ -79,10 +79,10 @@ generator throws the layout away and starts over with a fresh one. This is faste
 
 ### Other Optimizations
 
-- **A faster hash function than the default is used.** `ahash` is used for the internal lookup tables instead of the standard
-  library's default, which is built for resisting attacks rather than raw speed.
+**A faster hash function than the default is used.** `ahash` is used for the internal lookup tables instead of the standard
+library's default, which is built for resisting attacks rather than raw speed.
 
-- **The word list is compiled into the binary.** There is no file I/O at runtime, which is also what allows the exact same code to run in a browser.
+**The word list is compiled into the binary.** There is no file I/O at runtime, which is also what allows the exact same code to run in a browser.
 
 ## Credits
 
