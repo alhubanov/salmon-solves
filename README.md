@@ -1,5 +1,5 @@
 # Salmon Solves
-Welcome to Salmon Solves - a generator for crossword puzzles, currently only of the Scandinavian variant. Live at [Salmon Solves](https://www.salmonsolves.com/)
+A generator for crossword puzzles, currently only of the Scandinavian variant. Live at [Salmon Solves](https://www.salmonsolves.com/)
 
 The generator treats filling a grid as a constraint-satisfaction problem and is written in Rust. 
 It compiles to WebAssembly and runs entirely in the browser: no server is involved in making a puzzle.
@@ -57,11 +57,11 @@ Crossing words share their cells in memory, so a letter placed by an across word
 
 Four strategies keep the search from wandering into dead ends:
 
-**Most constrained slot is filled first.** The generator always fills the slot with the fewest remaining options.
+**Most constrained slot first.** The generator always fills the slot with the fewest remaining options.
 This is a strategy to expose dead ends early and cheaply. Slots are also pre-sorted by how many other slots cross them, 
 so the most constrained regions of the grid are filled first.
 
-**The algorightm looks ahead after every placement.** Having chosen a word for a slot, the generator checks the other slots crossing
+**Look-ahead after every placement.** Having chosen a word for a slot, the generator checks the other slots crossing
 it, then the slots crossing *those*, and so on for a limited number of steps. If any of them is
 left with zero possible words, the choice of word for the initial slot is rejected immediately. 
 Notably, this look-ahead stops descending when a slot's options stop shrinking (or when a pre-set depth is reached),
@@ -69,12 +69,11 @@ and it never visits the same slot twice in one pass.
 
 For small grids, this look-ahead does not bring a performance improvement. For ones bigger than roughly ~14x14, this makes a difference.
 The allowed depth for this look-ahead for grid 15x15 or bigger is 3 steps currently. 
-Nevertheless, options for generating grids of size 15x15 or bigger are not yet exposed in the UI.
 
-**Backtracking is targeted.** When a slot is not yet filled but there are no more word options available for it, the generator undoes the most
+**Targeted backtracking.** When a slot is not yet filled but there are no more word options available for it, the generator undoes the most
 recently placed crossing word, rather than unwinding everything.
 
-**A threshold determines when to give up and restart.** After backtracking more than 100 times without yet achieving a successfully-filled grid, the
+**Restart threshold.** After backtracking more than 100 times without yet achieving a successfully-filled grid, the
 generator throws the layout away and starts over with a fresh one. This is faster than attempting to resolve a nearly-impossible layout.
 
 ### Other Optimizations
@@ -82,7 +81,7 @@ generator throws the layout away and starts over with a fresh one. This is faste
 **A faster hash function than the default is used.** `ahash` is used for the internal lookup tables instead of the standard
 library's default, which is built for resisting attacks rather than raw speed.
 
-**The word list is compiled into the binary.** There is no file I/O at runtime, which is also what allows the exact same code to run in a browser.
+**The word list is compiled into the binary.** There is no file I/O at runtime, which is part of what lets the identical code run in a browser.
 
 ## Credits
 
