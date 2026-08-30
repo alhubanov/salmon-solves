@@ -18,7 +18,7 @@ pub mod grid_scandi;
 mod terminal_input_utilities;
 mod ui_input_utilities;
 
-static WORDS: &str = include_str!("../word_files/open-english-wordnet-dataset-deduped-clean-filtered-by-merged-aspell.tsv");
+static WORDS: &str = include_str!("../word_files/open-english-wordnet-dataset-deduped-clean.tsv");
 
 // Access point if using terminal
 pub fn run() -> () {
