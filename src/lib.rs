@@ -11,14 +11,14 @@ use crate::grid::GenericGrid;
 use crate::grid_scandi::dictionary;
 use crate::grid_scandi::run_stats::RunStats;
 
-mod grid;
-mod grid_simple;
+pub mod grid;
+pub mod grid_simple;
 pub mod grid_scandi;
 
 mod terminal_input_utilities;
 mod ui_input_utilities;
 
-static WORDS: &str = include_str!("../word_files/oewn-answer-clue-deduped-clean.tsv");
+static WORDS: &str = include_str!("../word_files/open-english-wordnet-dataset-deduped-clean-filtered-by-merged-aspell.tsv");
 
 // Access point if using terminal
 pub fn run() -> () {

@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use crate::grid_scandi::dictionary;
 
-static WORDS: &str = include_str!("../../word_files/oewn-answer-clue-deduped-clean.tsv");
+static WORDS: &str = include_str!("../../word_files/open-english-wordnet-dataset-deduped-clean-filtered-by-merged-aspell.tsv");
 
 #[test]
 fn cell_reset() {
