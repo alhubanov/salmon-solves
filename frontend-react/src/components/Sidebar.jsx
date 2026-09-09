@@ -178,7 +178,7 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
 
             <p>
               Words are selected from {" "}
-              <a href="https://www.peterbroda.me/crosswords/wordlist/" target="_blank" rel="noreferrer">
+              <a href="http://www.peterbroda.me/crosswords/wordlist/" target="_blank" rel="noreferrer">
                 Peter Broda's Crossword Wordlist
               </a>.
             </p>
