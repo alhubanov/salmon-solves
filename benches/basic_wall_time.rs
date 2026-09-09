@@ -11,10 +11,10 @@ use rand;
 use rand::rand_core::SeedableRng;
 use chacha20::ChaCha8Rng;
 
-static WORDS: &str = include_str!("../word_files/open-english-wordnet-dataset-deduped-clean-filtered-by-merged-aspell.tsv");
+static WORDS: &str = include_str!("../word_files/broda/broda-final.tsv");
 
 fn main() {
-    let n = 100;
+    let n = 500;
     let mut times: Vec<f64> = Vec::with_capacity(n);
     let mut rng = ChaCha8Rng::seed_from_u64(42);
 

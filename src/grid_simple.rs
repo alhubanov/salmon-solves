@@ -21,7 +21,7 @@ use crate::grid::LayoutError;
 use crate::grid_scandi::dictionary::Dictionary;
 use crate::grid_scandi::run_stats::RunStats;
 
-static WORDS: &str = include_str!("../word_files/open-english-wordnet-dataset-deduped-clean-filtered-by-merged-aspell.tsv");
+static WORDS: &str = include_str!("../word_files/broda/broda-final.tsv");
 
 pub enum WordPlacementError {
     DoesNotFitByWidth,

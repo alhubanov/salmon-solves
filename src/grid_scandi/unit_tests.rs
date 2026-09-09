@@ -6,7 +6,7 @@ use super::*;
 // use chacha20::ChaCha8Rng;
 use rand;
 
-static WORDS: &str = include_str!("../../word_files/open-english-wordnet-dataset-deduped-clean-filtered-by-merged-aspell.tsv");
+static WORDS: &str = include_str!("../../word_files/broda/broda-final.tsv");
 
 // #[test]
 // fn layout_first_row_and_column() {

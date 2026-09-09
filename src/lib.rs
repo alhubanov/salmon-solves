@@ -18,7 +18,7 @@ pub mod grid_scandi;
 mod terminal_input_utilities;
 mod ui_input_utilities;
 
-static WORDS: &str = include_str!("../word_files/open-english-wordnet-dataset-deduped-clean.tsv");
+static WORDS: &str = include_str!("../word_files/broda/broda-final.tsv");
 
 // Access point if using terminal
 pub fn run() -> () {
@@ -44,9 +44,8 @@ pub fn build_crossword_grid_for_command_line<T : Grid>(width: u32, height: u32, 
 
     let max_depth = 
         if width < 9 || height < 9 { 1 } 
-        else if width <= 14 && height <= 14 { 2 }
-        else if width <= 20 && height <= 20 { 3 }
-        else { 4 };
+        else if width <= 20 && height <= 20 { 2 }
+        else { 3 };
     
     let mut grid = T::initialize(width, height, Rc::clone(&dictionary));
     let mut run_stats = RunStats::new();
