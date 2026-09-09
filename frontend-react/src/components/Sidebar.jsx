@@ -177,16 +177,20 @@ export default function Sidebar({ settings, onUpdate, onGenerate, sidebarOpen, o
             <h3>Clue data</h3>
 
             <p>
-              Clues are adapted from{" "}
-              <a href="https://en-word.net/" target="_blank" rel="noreferrer">Open English WordNet</a>,
-              which builds on{" "}
-              <a href="https://wordnet.princeton.edu/" target="_blank" rel="noreferrer">Princeton WordNet</a>.
+              Words are selected from {" "}
+              <a href="https://www.peterbroda.me/crosswords/wordlist/" target="_blank" rel="noreferrer">
+                Peter Broda's Crossword Wordlist
+              </a>.
             </p>
 
             <p>
-              Open English WordNet is licensed under{" "}
-              <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
-              Its definitions have been extracted, filtered and edited here for use as crossword clues,
+              Clues are adapted from{" "}
+              <a href="https://en-word.net/" target="_blank" rel="noreferrer">Open English WordNet</a>{" "}
+              (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>)
+              and{" "}
+              <a href="https://en.wiktionary.org/" target="_blank" rel="noreferrer">Wiktionary</a>{" "}
+              (<a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noreferrer">CC BY-SA 3.0</a>).
+              Definitions have been extracted, filtered, and edited here for use as crossword clues,
               so the wording may differ from the original.
             </p>
           </section>
